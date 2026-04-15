@@ -1,0 +1,167 @@
+import ProfileImg from "@/assets/imgs/profile.jpeg"
+import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
+import axios from "axios"
+import formatTime from "@/utils/formatTime"
+import useAuthStore from "../../store/useAuthStore"
+
+import QuickActions from "./components/QuickActions"
+import RecentWinners from "./components/RecentWinners"
+import Header from "./components/Header"
+import JackpotCard from "./components/JackpotCard"
+
+const API_BASE_URL = 'http://localhost:3000/api';
+
+const RecentWinnersData = [
+    { name: 'Rahul K.', won: '₹12,000', game: 'Lucky Spin', img: '12' },
+    { name: 'Sneha P.', won: '₹5,500', game: 'Bingo Rush', img: '44' },
+    { name: 'Arjun M.', won: '₹8,200', game: 'Cards Win', img: '60' },
+    { name: 'Priya S.', won: '₹3,100', game: 'Dice Roll', img: '36' },
+]
+
+export default function Home() {
+    const navigate = useNavigate();
+    const { user } = useAuthStore();
+
+    const [lotteryDraws, setLotteryDraws] = useState([]);
+    const [abcDraws, setAbcDraws] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchActiveDraws = async () => {
+            try {
+                const res = await axios.get(`${API_BASE_URL}/draws/active`);
+                if (res.data.success) {
+                    const draws = res.data.draws;
+
+                    // Separate by game type
+                    setLotteryDraws(draws.filter(d => d.game.type === 'lottery'));
+                    setAbcDraws(draws.filter(d => d.game.type === 'abc'));
+                }
+            } catch (err) {
+                console.error("Failed to fetch active draws:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchActiveDraws();
+    }, []);
+
+    // Time difference calculator for countdowns
+    const calculateTimeLeft = (scheduledAt) => {
+        const diff = new Date(scheduledAt).getTime() - new Date().getTime();
+        return diff > 0 ? Math.floor(diff / 1000) : 0;
+    };
+
+    // Live countdown timer state
+    const [now, setNow] = useState(Date.now());
+    useEffect(() => {
+        const interval = setInterval(() => setNow(Date.now()), 1000);
+        return () => clearInterval(interval);
+    }, []);
+
+    return (
+        <div className="pb-4">
+
+            {/* ── Top Header Bar ── */}
+            <Header user={{
+                name: user?.name || "Player",
+                balance: user ? parseFloat(user.balance) : 0,
+                avatar: user?.avatar_url || ProfileImg
+            }} />
+
+            {/* ── Jackpot Card ── */}
+            <JackpotCard />
+
+            {/* ── Quick Actions ── */}
+            <QuickActions />
+
+            {/* ── Lottery Games  ── */}
+            <div className="px-4 mt-6">
+                <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-[17px] font-black text-gray-900">🎰 Lottery Games</h3>
+                </div>
+
+                {loading ? (
+                    <div className="text-sm text-gray-500">Loading games...</div>
+                ) : lotteryDraws.length === 0 ? (
+                    <div className="text-sm text-gray-500">No active lottery draws right now.</div>
+                ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                        {lotteryDraws.map((draw) => (
+                            <div
+                                key={draw.id}
+                                className="relative overflow-hidden rounded-2xl cursor-pointer active:scale-95 transition-all h-32 bg-gray-200"
+                                onClick={() => navigate(`/lottery-ticket/${draw.game.slug}`)}
+                            >
+                                {draw.game.banner_url ? (
+                                    <img src={draw.game.banner_url} alt={draw.game.name} className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full bg-gradient-to-br from-red-500 to-pink-600 flex items-center justify-center p-2 text-center text-white font-bold">
+                                        {draw.game.name}
+                                    </div>
+                                )}
+
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+                                <div className="absolute bottom-[24px] left-[6px] text-white text-[12px] font-bold">
+                                    {draw.game.name}
+                                </div>
+
+                                <div className="absolute bottom-[5px] left-[6px] px-2 py-1 rounded-lg bg-black/60 text-white text-[10px] font-mono font-bold">
+                                    ⏱ {formatTime(calculateTimeLeft(draw.scheduled_at))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* ── Abc Games  ── */}
+            <div className="px-4 mt-6">
+                <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-[17px] font-black text-gray-900">🎲 ABC Games</h3>
+                </div>
+
+                {loading ? (
+                    <div className="text-sm text-gray-500">Loading games...</div>
+                ) : abcDraws.length === 0 ? (
+                    <div className="text-sm text-gray-500">No active ABC draws right now.</div>
+                ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                        {abcDraws.map((draw) => (
+                            <div
+                                key={draw.id}
+                                className="relative overflow-hidden rounded-2xl cursor-pointer active:scale-95 transition-all h-32 bg-gray-200"
+                                onClick={() => navigate(`/abc-ticket/${draw.game.slug}`)}
+                            >
+                                {draw.game.banner_url ? (
+                                    <img src={draw.game.banner_url} alt={draw.game.name} className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center p-2 text-center text-white font-bold">
+                                        {draw.game.name}
+                                    </div>
+                                )}
+
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+                                <div className="absolute bottom-[24px] left-[6px] text-white text-[12px] font-bold">
+                                    {draw.game.name} {draw.time_slot && `- ${draw.time_slot}`}
+                                </div>
+
+                                <div className="absolute bottom-2 left-2 px-2 py-1 rounded-lg bg-black/60 text-white text-[10px] font-mono font-bold">
+                                    ⏱ {formatTime(calculateTimeLeft(draw.scheduled_at))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* ── Recent Winners ── */}
+            <RecentWinners data={RecentWinnersData} />
+
+        </div>
+    );
+}

@@ -1,0 +1,217 @@
+import { FiSettings, FiHelpCircle, FiLogOut, FiChevronRight, FiCreditCard, FiBell, FiShield, FiGift } from 'react-icons/fi';
+import ProfileImg from "@/assets/imgs/profile.jpeg"
+
+const MENU_ITEMS = [
+  {
+    icon: FiCreditCard, label: 'Payment Methods', sub: 'Cards & UPI linked',
+    iconBg: '#eff6ff', iconColor: '#2563eb',
+    badge: null,
+  },
+  {
+    icon: FiBell, label: 'Notifications', sub: 'Alerts & updates',
+    iconBg: '#fff7ed', iconColor: '#ea580c',
+    badge: '3',
+  },
+  {
+    icon: FiShield, label: 'Security', sub: '2FA enabled',
+    iconBg: '#f0fdf4', iconColor: '#16a34a',
+    badge: null,
+  },
+  {
+    icon: FiGift, label: 'Refer & Earn', sub: 'Get ₹200 per referral',
+    iconBg: '#fdf4ff', iconColor: '#9333ea',
+    badge: 'NEW',
+  },
+  {
+    icon: FiSettings, label: 'Account Settings', sub: 'Preferences & data',
+    iconBg: '#f9fafb', iconColor: '#6b7280',
+    badge: null,
+  },
+  {
+    icon: FiHelpCircle, label: 'Help & Support', sub: '24/7 live chat',
+    iconBg: '#eff6ff', iconColor: '#0284c7',
+    badge: null,
+  },
+];
+
+const STATS = [
+  { label: 'Tickets', value: '24', color: '#4f46e5' },
+  { label: 'Wins', value: '3', color: '#059669' },
+  { label: 'Total Won', value: '₹900', color: '#dc2626' },
+];
+
+export default function Profile() {
+  return (
+    <div className="pb-4">
+
+      {/* ── Header Band ── */}
+      <div
+        className="relative px-5 pt-10 pb-20 text-center overflow-hidden"
+        style={{
+          background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 40%, #7c3aed 100%)',
+        }}
+      >
+        {/* Decorative circles */}
+        <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/10" />
+        <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-white/8" />
+        <div className="absolute top-4 left-10 w-3 h-3 rounded-full bg-white/30" />
+        <div className="absolute top-8 right-16 w-2 h-2 rounded-full bg-yellow-300/60" />
+      </div>
+
+      {/* ── Profile Card (overlapping header) ── */}
+      <div className="px-4 -mt-16 relative z-10">
+        <div
+          className="bg-white rounded-3xl p-5 text-center"
+          style={{ boxShadow: '0 12px 40px rgba(0,0,0,0.12)' }}
+        >
+          {/* Avatar */}
+          <div className="relative inline-block mb-4">
+            <div
+              className="w-24 h-24 rounded-full mx-auto overflow-hidden"
+              style={{
+                border: '4px solid #ffffff',
+                boxShadow: '0 0 0 3px #dc2626, 0 8px 24px rgba(220,38,38,0.3)',
+              }}
+            >
+              <img
+                src={ProfileImg}
+                alt="Profile"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            {/* Edit button */}
+            <button
+              className="absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center text-xs text-white active:scale-90 transition-transform"
+              style={{
+                background: 'linear-gradient(135deg, #dc2626, #ef4444)',
+                border: '2px solid #fff',
+                boxShadow: '0 4px 10px rgba(220,38,38,0.4)',
+              }}
+            >
+              ✏️
+            </button>
+          </div>
+
+          <h1 className="text-xl font-black text-gray-900 tracking-tight">Alex Johnson</h1>
+          <p className="text-gray-400 text-sm font-medium mt-0.5">alex.j@example.com</p>
+
+          {/* Verified + Level badges */}
+          <div className="flex items-center justify-center gap-2 mt-3">
+            <span
+              className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"
+              style={{ background: '#d1fae5', color: '#065f46' }}
+            >
+              ✓ Verified Player
+            </span>
+            <span
+              className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"
+              style={{ background: '#fef3c7', color: '#92400e' }}
+            >
+              ⭐ Gold Level
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Stats Row ── */}
+      <div className="px-4 mt-4">
+        <div
+          className="grid grid-cols-3 divide-x divide-gray-100 rounded-2xl overflow-hidden"
+          style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.08)', border: '1px solid #f3f4f6' }}
+        >
+          {STATS.map((s, i) => (
+            <div key={i} className="py-4 text-center bg-white">
+              <p className="text-xl font-black" style={{ color: s.color }}>{s.value}</p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Promo Banner ── */}
+      <div className="px-4 mt-4">
+        <div
+          className="flex items-center gap-3 p-4 rounded-2xl"
+          style={{
+            background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+            border: '1px solid #fcd34d',
+          }}
+        >
+          <span className="text-3xl">🎁</span>
+          <div className="flex-1">
+            <p className="font-black text-amber-900 text-sm">Refer & Earn</p>
+            <p className="text-amber-700 text-xs font-medium mt-0.5">Invite friends, earn ₹200 each!</p>
+          </div>
+          <button
+            className="px-3 py-2 rounded-xl text-xs font-black text-white active:scale-95 transition-all"
+            style={{ background: '#f59e0b' }}
+          >
+            Invite →
+          </button>
+        </div>
+      </div>
+
+      {/* ── Menu ── */}
+      <div className="px-4 mt-4">
+        <div
+          className="rounded-2xl overflow-hidden bg-white"
+          style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.07)', border: '1px solid #f3f4f6' }}
+        >
+          {MENU_ITEMS.map((item, idx) => (
+            <button
+              key={idx}
+              className="w-full flex items-center justify-between px-4 py-3.5 transition-all active:bg-gray-50 group"
+              style={{
+                borderBottom: idx < MENU_ITEMS.length - 1 ? '1px solid #f9fafb' : 'none',
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: item.iconBg }}
+                >
+                  <item.icon style={{ width: 18, height: 18, color: item.iconColor }} />
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-bold text-gray-800">{item.label}</p>
+                  <p className="text-[11px] text-gray-400 font-medium mt-0.5">{item.sub}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {item.badge && (
+                  <span
+                    className="px-2 py-0.5 rounded-full text-[9px] font-black"
+                    style={
+                      item.badge === 'NEW'
+                        ? { background: '#fdf4ff', color: '#9333ea' }
+                        : { background: '#fee2e2', color: '#dc2626' }
+                    }
+                  >
+                    {item.badge}
+                  </span>
+                )}
+                <FiChevronRight className="text-gray-300 group-hover:text-gray-500 transition-colors w-4 h-4" />
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Log Out ── */}
+      <div className="px-4 mt-4">
+        <button
+          className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl font-bold text-sm active:scale-95 transition-all"
+          style={{
+            background: '#fff1f2',
+            border: '1.5px solid #fecdd3',
+            color: '#dc2626',
+          }}
+        >
+          <FiLogOut className="w-4 h-4" />
+          Log Out
+        </button>
+      </div>
+
+    </div>
+  );
+}
