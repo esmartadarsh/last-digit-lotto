@@ -28,7 +28,7 @@ app.use(cors({
     'capacitor://localhost',
     'http://localhost',
   ],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
@@ -42,7 +42,7 @@ app.use(express.urlencoded({ extended: true }));
 // ── Global rate limiter (100 req / 15 min per IP)
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 1000, // Increased from 100 to 1000 for development ease
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many requests, please try again later.' },

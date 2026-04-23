@@ -1,5 +1,5 @@
 import { FiSettings, FiHelpCircle, FiLogOut, FiChevronRight, FiCreditCard, FiBell, FiShield, FiGift } from 'react-icons/fi';
-import ProfileImg from "@/assets/imgs/profile.jpeg"
+import useAuthStore from '../store/useAuthStore';
 
 const MENU_ITEMS = [
   {
@@ -41,6 +41,8 @@ const STATS = [
 ];
 
 export default function Profile() {
+  const { user, logout } = useAuthStore();
+
   return (
     <div className="pb-4">
 
@@ -67,17 +69,24 @@ export default function Profile() {
           {/* Avatar */}
           <div className="relative inline-block mb-4">
             <div
-              className="w-24 h-24 rounded-full mx-auto overflow-hidden"
+              className="w-24 h-24 rounded-full mx-auto overflow-hidden flex items-center justify-center"
               style={{
                 border: '4px solid #ffffff',
                 boxShadow: '0 0 0 3px #dc2626, 0 8px 24px rgba(220,38,38,0.3)',
+                background: user?.avatar_url ? 'transparent' : 'linear-gradient(135deg, #dc2626, #7c3aed)',
               }}
             >
-              <img
-                src={ProfileImg}
-                alt="Profile"
-                className="w-full h-full object-cover"
-              />
+              {user?.avatar_url ? (
+                <img
+                  src={user.avatar_url}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-3xl font-black text-white">
+                  {(user?.name || 'P').charAt(0).toUpperCase()}
+                </span>
+              )}
             </div>
             {/* Edit button */}
             <button
@@ -92,8 +101,8 @@ export default function Profile() {
             </button>
           </div>
 
-          <h1 className="text-xl font-black text-gray-900 tracking-tight">Alex Johnson</h1>
-          <p className="text-gray-400 text-sm font-medium mt-0.5">alex.j@example.com</p>
+          <h1 className="text-xl font-black text-gray-900 tracking-tight">{user?.name || 'Player'}</h1>
+          <p className="text-gray-400 text-sm font-medium mt-0.5">{user?.email || user?.phone || ''}</p>
 
           {/* Verified + Level badges */}
           <div className="flex items-center justify-center gap-2 mt-3">
@@ -200,6 +209,7 @@ export default function Profile() {
       {/* ── Log Out ── */}
       <div className="px-4 mt-4">
         <button
+          onClick={logout}
           className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl font-bold text-sm active:scale-95 transition-all"
           style={{
             background: '#fff1f2',

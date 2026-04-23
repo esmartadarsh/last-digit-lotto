@@ -2,6 +2,7 @@ const { sequelize } = require('../config/database');
 const { AbcTicket, AbcResult, Draw, Transaction, User } = require('../models');
 const { syncResultToFirestore } = require('./firestoreSync');
 const { sendResultNotification, sendWinNotification } = require('./notificationService');
+const { storage } = require('../config/firebase');
 
 const WIN_AMOUNTS = {
   single: 100,    // ₹100
@@ -117,6 +118,22 @@ async function resolveAbcDraw(drawId, result, adminUserId) {
 
   await syncResultToFirestore(drawId, { type: 'abc', result });
   await sendResultNotification(drawId, 'abc', result);
+
+  // Delete banner from Firebase Storage (non-fatal)
+  try {
+    const draw = await Draw.findByPk(drawId);
+    if (draw?.banner_url) {
+      const bucket = storage.bucket();
+      const match = draw.banner_url.match(/\/o\/([^?]+)/);
+      if (match) {
+        const filePath = decodeURIComponent(match[1]);
+        await bucket.file(filePath).delete();
+      }
+      await draw.update({ banner_url: null });
+    }
+  } catch (e) {
+    console.warn('Banner cleanup failed (non-fatal):', e.message);
+  }
 
   return { winnersCount, totalPaidOut };
 }

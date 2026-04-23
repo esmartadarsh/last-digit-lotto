@@ -18,7 +18,7 @@ import {
   validateCustomTicket,
 } from "../../utils/ticketGenerator";
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 /* ── Static Data ── */
 const JACKPOT_BALLS = ["8", "8", "C", "2", "0", "6", "6", "2"];

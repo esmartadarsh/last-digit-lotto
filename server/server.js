@@ -19,8 +19,24 @@ async function start() {
 
     // Sync all models (creates tables if they don't exist)
     // Use { force: true } only once to reset tables during development
-    await sequelize.sync({ alter: true });
+    await sequelize.sync({ alter: false });
     console.log('✅ Models synced');
+
+    // ── Seed Admin
+    const { Admin } = require('./src/models');
+    const bcrypt = require('bcrypt');
+    const defaultAdminPhone = '9667479527';
+    let adminUser = await Admin.findOne({ where: { phone: defaultAdminPhone } });
+    if (!adminUser) {
+      const hashedPassword = await bcrypt.hash('123456', 10);
+      await Admin.create({
+        phone: defaultAdminPhone,
+        password: hashedPassword,
+        name: 'Super Admin',
+        role: 'superadmin'
+      });
+      console.log('✅ Created default admin user (9667479527 / 123456)');
+    }
 
     // ── Cron: auto-close expired draws every minute
     cron.schedule('* * * * *', async () => {

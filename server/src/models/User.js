@@ -19,7 +19,7 @@ const User = sequelize.define('User', {
   },
   email: {
     type: DataTypes.STRING(150),
-    allowNull: false,
+    allowNull: true,
     unique: true,
   },
   phone: {
@@ -68,10 +68,6 @@ const User = sequelize.define('User', {
   timestamps: true,
   createdAt: 'created_at',
   updatedAt: 'updated_at',
-  indexes: [
-    { fields: ['firebase_uid'] },
-    { fields: ['referral_code'] },
-  ],
 });
 
 module.exports = User;

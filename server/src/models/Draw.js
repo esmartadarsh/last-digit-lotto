@@ -37,6 +37,11 @@ const Draw = sequelize.define('Draw', {
     type: DataTypes.STRING(100),
     allowNull: true,
   },
+  // Firebase Storage URL for draw banner image
+  banner_url: {
+    type: DataTypes.STRING(500),
+    allowNull: true,
+  },
 }, {
   tableName: 'draws',
   timestamps: true,

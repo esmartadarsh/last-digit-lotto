@@ -1,4 +1,4 @@
-import ProfileImg from "@/assets/imgs/profile.jpeg"
+import ProfileImg from "@/assets/imgs/default-profile-img.png"
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import axios from "axios"
@@ -10,7 +10,7 @@ import RecentWinners from "./components/RecentWinners"
 import Header from "./components/Header"
 import JackpotCard from "./components/JackpotCard"
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const RecentWinnersData = [
     { name: 'Rahul K.', won: '₹12,000', game: 'Lucky Spin', img: '12' },
@@ -18,6 +18,22 @@ const RecentWinnersData = [
     { name: 'Arjun M.', won: '₹8,200', game: 'Cards Win', img: '60' },
     { name: 'Priya S.', won: '₹3,100', game: 'Dice Roll', img: '36' },
 ]
+
+function Countdown({ scheduledAt }) {
+    const [now, setNow] = useState(Date.now());
+
+    useEffect(() => {
+        const interval = setInterval(() => setNow(Date.now()), 1000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const timeLeft = Math.max(
+        Math.floor((new Date(scheduledAt) - now) / 1000),
+        0
+    );
+
+    return <span>⏱ {formatTime(timeLeft)}</span>;
+}
 
 export default function Home() {
     const navigate = useNavigate();
@@ -53,13 +69,6 @@ export default function Home() {
         const diff = new Date(scheduledAt).getTime() - new Date().getTime();
         return diff > 0 ? Math.floor(diff / 1000) : 0;
     };
-
-    // Live countdown timer state
-    const [now, setNow] = useState(Date.now());
-    useEffect(() => {
-        const interval = setInterval(() => setNow(Date.now()), 1000);
-        return () => clearInterval(interval);
-    }, []);
 
     return (
         <div className="pb-4">
@@ -110,7 +119,7 @@ export default function Home() {
                                 </div>
 
                                 <div className="absolute bottom-[5px] left-[6px] px-2 py-1 rounded-lg bg-black/60 text-white text-[10px] font-mono font-bold">
-                                    ⏱ {formatTime(calculateTimeLeft(draw.scheduled_at))}
+                                    <Countdown scheduledAt={draw.scheduled_at} />
                                 </div>
                             </div>
                         ))}
@@ -151,7 +160,7 @@ export default function Home() {
                                 </div>
 
                                 <div className="absolute bottom-2 left-2 px-2 py-1 rounded-lg bg-black/60 text-white text-[10px] font-mono font-bold">
-                                    ⏱ {formatTime(calculateTimeLeft(draw.scheduled_at))}
+                                    <Countdown scheduledAt={draw.scheduled_at} />
                                 </div>
                             </div>
                         ))}
@@ -160,7 +169,7 @@ export default function Home() {
             </div>
 
             {/* ── Recent Winners ── */}
-            <RecentWinners data={RecentWinnersData} />
+            {/* <RecentWinners data={RecentWinnersData} /> */}
 
         </div>
     );

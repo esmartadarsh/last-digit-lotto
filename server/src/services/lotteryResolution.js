@@ -2,6 +2,7 @@ const { sequelize } = require('../config/database');
 const { LotteryTicket, LotteryResult, Draw, Transaction, User } = require('../models');
 const { syncResultToFirestore } = require('./firestoreSync');
 const { sendResultNotification, sendWinNotification } = require('./notificationService');
+const { storage } = require('../config/firebase');
 
 // Prize for matching the exact winning ticket number
 const JACKPOT_PRIZE = 100000; // ₹1,00,000
@@ -80,6 +81,22 @@ async function resolveLotteryDraw(drawId, winningNumber, adminUserId) {
 
   // 7. FCM notifications
   await sendResultNotification(drawId, 'lottery', winningNumber);
+
+  // 8. Delete banner from Firebase Storage (non-fatal)
+  try {
+    const draw = await Draw.findByPk(drawId);
+    if (draw?.banner_url) {
+      const bucket = storage.bucket();
+      const match = draw.banner_url.match(/\/o\/([^?]+)/);
+      if (match) {
+        const filePath = decodeURIComponent(match[1]);
+        await bucket.file(filePath).delete();
+      }
+      await draw.update({ banner_url: null });
+    }
+  } catch (e) {
+    console.warn('Banner cleanup failed (non-fatal):', e.message);
+  }
 
   return { winnersCount, totalPaidOut };
 }

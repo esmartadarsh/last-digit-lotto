@@ -35,8 +35,10 @@ router.post('/sync', async (req, res) => {
       user = await User.create({
         id: uuidv4(),
         firebase_uid: decoded.uid,
-        name: decoded.name || 'Player',
-        email: decoded.email || '',
+        name: decoded.name || (decoded.phone_number ? `User ${decoded.phone_number.slice(-4)}` : 'Player'),
+        email: decoded.email || null,       // phone users have no email — store null not ''
+        phone: decoded.phone_number || null, // Firebase puts phone here for phone auth
+        is_verified: !!decoded.email_verified || !!decoded.phone_number,
         referral_code,
         avatar_url: decoded.picture || null,
       });
@@ -48,6 +50,7 @@ router.post('/sync', async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
+        phone: user.phone,
         balance: user.balance,
         role: user.role,
         level: user.level,
@@ -58,6 +61,86 @@ router.post('/sync', async (req, res) => {
   } catch (err) {
     console.error(err);
     return res.status(401).json({ success: false, message: 'Invalid or expired token' });
+  }
+});
+
+/**
+ * POST /api/auth/admin/login
+ * Custom JWT-based manual login for admins bypassing Firebase.
+ */
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const { Admin } = require('../models');
+
+router.post('/admin/login', async (req, res) => {
+  const { phone, password } = req.body;
+  if (!phone || !password) {
+    return res.status(400).json({ success: false, message: 'Phone and password are required' });
+  }
+
+  try {
+    const adminUser = await Admin.findOne({ where: { phone } });
+    if (!adminUser) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+
+    const match = await bcrypt.compare(password, adminUser.password);
+    if (!match) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+
+    // Issue local JWT
+    const token = jwt.sign(
+      { id: adminUser.id, role: adminUser.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '12h' }
+    );
+
+    return res.json({
+      success: true,
+      token,
+      user: {
+        id: adminUser.id,
+        name: adminUser.name,
+        phone: adminUser.phone,
+        role: adminUser.role,
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+/**
+ * GET /api/auth/admin/me
+ * Returns the admin payload based on the local JWT.
+ */
+const authenticate = require('../middleware/auth'); // We will update auth.js middleware to handle both soon
+
+router.get('/admin/me', authenticate, async (req, res) => {
+  // If authenticate middleware passes, it sets req.user.
+  // We can just return it.
+  try {
+    if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+      return res.status(403).json({ success: false, message: 'Not an admin' });
+    }
+
+
+
+    return res.json({
+      success: true,
+      user: {
+        id: req.user.id,
+        name: req.user.name,
+        phone: req.user.phone,
+        role: req.user.role,
+        balance: req.user.balance,
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 

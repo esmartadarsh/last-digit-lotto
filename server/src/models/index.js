@@ -1,4 +1,5 @@
 const User = require('./User');
+const Admin = require('./Admin');
 const Game = require('./Game');
 const Draw = require('./Draw');
 const LotteryTicket = require('./LotteryTicket');
@@ -33,15 +34,16 @@ AbcTicket.belongsTo(Draw,     { foreignKey: 'draw_id', as: 'draw' });
 
 // ── Results → Draw & Admin
 LotteryResult.belongsTo(Draw, { foreignKey: 'draw_id',     as: 'draw' });
-LotteryResult.belongsTo(User, { foreignKey: 'announced_by', as: 'announcedBy' });
+LotteryResult.belongsTo(User, { foreignKey: 'announced_by', as: 'announcedBy' }); // Optionally change this to Admin later
 AbcResult.belongsTo(Draw,     { foreignKey: 'draw_id',     as: 'draw' });
-AbcResult.belongsTo(User,     { foreignKey: 'announced_by', as: 'announcedBy' });
+AbcResult.belongsTo(User,     { foreignKey: 'announced_by', as: 'announcedBy' }); // Optionally change this to Admin later
 
 // ── Transaction → User
 Transaction.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
 module.exports = {
   User,
+  Admin,
   Game,
   Draw,
   LotteryTicket,

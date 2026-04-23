@@ -10,6 +10,7 @@ const adminOnly = require('../middleware/adminOnly');
 const { resolveLotteryDraw } = require('../services/lotteryResolution');
 const { resolveAbcDraw } = require('../services/abcResolution');
 const { createDrawInFirestore, syncDrawStatusToFirestore } = require('../services/firestoreSync');
+const { storage } = require('../config/firebase');
 
 // Every admin route requires auth + admin role
 router.use(authenticate, adminOnly);
@@ -27,6 +28,7 @@ router.post(
     body('scheduled_at').isISO8601().withMessage('Must be ISO date e.g. 2026-04-15T13:00:00'),
     body('ticket_price').isFloat({ min: 1 }),
     body('time_slot').optional().isIn(['1PM', '8PM']),
+    body('banner_url').optional().isURL(),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -39,6 +41,7 @@ router.post(
         scheduled_at: req.body.scheduled_at,
         ticket_price: req.body.ticket_price,
         time_slot: req.body.time_slot || null,
+        banner_url: req.body.banner_url || null,
       });
 
       // Push to Firestore for realtime countdown
@@ -67,6 +70,60 @@ router.put('/draws/:drawId/close', async (req, res) => {
     await syncDrawStatusToFirestore(draw.id, 'closed');
 
     return res.json({ success: true, message: 'Draw closed successfully' });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/**
+ * DELETE /api/admin/draws/:drawId
+ * Delete a draw (only if no tickets have been bought).
+ */
+router.delete('/draws/:drawId', async (req, res) => {
+  try {
+    const draw = await Draw.findByPk(req.params.drawId, {
+      include: [{ model: Game, as: 'game' }],
+    });
+    if (!draw) return res.status(404).json({ success: false, message: 'Draw not found' });
+
+    const isLottery = draw.game && draw.game.type === 'lottery';
+    const Model = isLottery ? LotteryTicket : AbcTicket;
+    
+    if (Model) {
+      const ticketsCount = await Model.count({ where: { draw_id: draw.id } });
+      if (ticketsCount > 0) {
+        return res.status(400).json({ success: false, message: 'Cannot delete draw with existing tickets.' });
+      }
+    }
+
+    await draw.destroy();
+    return res.json({ success: true, message: 'Draw deleted successfully' });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/**
+ * DELETE /api/admin/draws/:drawId/banner
+ * Called from client after upload to delete a banner from Firebase Storage by path.
+ */
+router.delete('/draws/:drawId/banner', async (req, res) => {
+  try {
+    const draw = await Draw.findByPk(req.params.drawId);
+    if (!draw || !draw.banner_url) return res.status(404).json({ success: false, message: 'No banner found' });
+
+    // Extract the path from the URL and delete from Firebase Storage
+    const bucket = storage.bucket();
+    const url = draw.banner_url;
+    // Firebase Storage URL pattern: .../o/PATH?alt=media
+    const match = url.match(/\/o\/([^?]+)/);
+    if (match) {
+      const filePath = decodeURIComponent(match[1]);
+      await bucket.file(filePath).delete().catch(() => {}); // safe delete
+    }
+
+    await draw.update({ banner_url: null });
+    return res.json({ success: true, message: 'Banner deleted' });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }
@@ -213,18 +270,21 @@ router.get('/users', async (req, res) => {
 
     if (search) {
       where[Op.or] = [
-        { name:  { [Op.like]: `%${search}%` } },
+        { name: { [Op.like]: `%${search}%` } },
         { email: { [Op.like]: `%${search}%` } },
       ];
     }
 
     const { count, rows } = await User.findAndCountAll({
       where,
+      raw: true,
       attributes: { exclude: ['firebase_uid', 'fcm_token'] },
       order: [['created_at', 'DESC']],
       limit: parseInt(limit),
       offset: (page - 1) * limit,
     });
+
+    console.log('all users', rows)
 
     return res.json({ success: true, total: count, users: rows });
   } catch (err) {
@@ -339,5 +399,21 @@ router.post(
     }
   }
 );
+
+/**
+ * PUT /api/admin/games/:gameId/toggle-active
+ * Toggle a game's active status.
+ */
+router.put('/games/:gameId/toggle-active', async (req, res) => {
+  try {
+    const game = await Game.findByPk(req.params.gameId);
+    if (!game) return res.status(404).json({ success: false, message: 'Game not found' });
+    
+    await game.update({ is_active: !game.is_active });
+    return res.json({ success: true, game, message: `Game is now ${game.is_active ? 'active' : 'inactive'}` });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 module.exports = router;
