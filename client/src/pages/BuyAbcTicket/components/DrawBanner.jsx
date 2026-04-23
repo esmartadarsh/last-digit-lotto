@@ -1,12 +1,33 @@
-export default function DrawBanner({ title, date, digits = [], balls = [], onHowToPlay }) {
+export default function DrawBanner({ title, date, digits = [], balls = [], onHowToPlay, bannerUrl }) {
     return (
         <div
             className="mx-3 mt-2 rounded-xl overflow-hidden relative"
             style={{
-                background: "linear-gradient(135deg, #1b5e20 0%, #2e7d32 55%, #388e3c 100%)",
+                background: bannerUrl
+                    ? "transparent"
+                    : "linear-gradient(135deg, #1b5e20 0%, #2e7d32 55%, #388e3c 100%)",
                 boxShadow: "0 8px 24px rgba(46,125,50,0.35)",
+                minHeight: 90,
             }}
         >
+            {/* Banner image background */}
+            {bannerUrl && (
+                <img
+                    src={bannerUrl}
+                    alt="draw banner"
+                    className="absolute inset-0 w-full h-full object-cover"
+                />
+            )}
+
+            {/* Dark overlay for readability */}
+            <div
+                className="absolute inset-0"
+                style={{
+                    background: bannerUrl
+                        ? "linear-gradient(135deg, rgba(27,94,32,0.75) 0%, rgba(56,142,60,0.6) 100%)"
+                        : "transparent",
+                }}
+            />
             {/* Decorative glow circle */}
             <div
                 className="absolute -top-10 -right-10 w-36 h-36 rounded-full pointer-events-none"

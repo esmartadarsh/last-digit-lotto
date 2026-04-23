@@ -16,6 +16,21 @@ const STATUS_COLORS = {
   completed: 'bg-slate-700/50 text-slate-400 border border-slate-600',
 };
 
+const TIME_SLOTS = [
+  { label: '12 AM', value: '00:00' }, { label: '1 AM', value: '01:00' },
+  { label: '2 AM', value: '02:00' }, { label: '3 AM', value: '03:00' },
+  { label: '4 AM', value: '04:00' }, { label: '5 AM', value: '05:00' },
+  { label: '6 AM', value: '06:00' }, { label: '7 AM', value: '07:00' },
+  { label: '8 AM', value: '08:00' }, { label: '9 AM', value: '09:00' },
+  { label: '10 AM', value: '10:00' }, { label: '11 AM', value: '11:00' },
+  { label: '12 PM', value: '12:00' }, { label: '1 PM', value: '13:00' },
+  { label: '2 PM', value: '14:00' }, { label: '3 PM', value: '15:00' },
+  { label: '4 PM', value: '16:00' }, { label: '5 PM', value: '17:00' },
+  { label: '6 PM', value: '18:00' }, { label: '7 PM', value: '19:00' },
+  { label: '8 PM', value: '20:00' }, { label: '9 PM', value: '21:00' },
+  { label: '10 PM', value: '22:00' }, { label: '11 PM', value: '23:00' },
+];
+
 export default function ManageLotteryGame() {
   const { token } = useAuthStore();
 
@@ -34,7 +49,8 @@ export default function ManageLotteryGame() {
   // Create Draw form
   const [showDrawForm, setShowDrawForm] = useState(false);
   const [selectedGameId, setSelectedGameId] = useState('');
-  const [scheduledAt, setScheduledAt] = useState('');
+  const [drawDate, setDrawDate] = useState('');
+  const [drawHour, setDrawHour] = useState('');
   const [ticketPrice, setTicketPrice] = useState('');
   const [creatingDraw, setCreatingDraw] = useState(false);
 
@@ -99,7 +115,9 @@ export default function ManageLotteryGame() {
   // ── Create Draw ──
   const handleCreateDraw = async (e) => {
     e.preventDefault();
-    if (!selectedGameId || !scheduledAt || !ticketPrice) return toast.error('All fields are required');
+    if (!selectedGameId || !drawDate || !drawHour || !ticketPrice) return toast.error('All fields are required');
+    // Combine date + hour slot into ISO-compatible local datetime string
+    const scheduled_at = `${drawDate}T${drawHour}:00`;
     setCreatingDraw(true);
     try {
       let banner_url = null;
@@ -117,11 +135,11 @@ export default function ManageLotteryGame() {
       }
 
       await axios.post(`${API_BASE_URL}/admin/draws`,
-        { game_id: parseInt(selectedGameId), scheduled_at: scheduledAt, ticket_price: parseFloat(ticketPrice), banner_url },
+        { game_id: parseInt(selectedGameId), scheduled_at, ticket_price: parseFloat(ticketPrice), banner_url },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       toast.success('Draw created successfully!');
-      setSelectedGameId(''); setScheduledAt(''); setTicketPrice('');
+      setSelectedGameId(''); setDrawDate(''); setDrawHour(''); setTicketPrice('');
       setBannerBlob(null); setBannerPreview(null);
       setShowDrawForm(false);
       fetchGames();
@@ -161,17 +179,31 @@ export default function ManageLotteryGame() {
     }
   };
 
-  // ── Toggle Game Active Status ──
-  const handleToggleGame = async (gameId, currentStatus) => {
-    if (!window.confirm(`Are you sure you want to make this game ${currentStatus ? 'inactive' : 'active'}?`)) return;
+  // ── Toggle Game Active Status (commented out) ──
+  // const handleToggleGame = async (gameId, currentStatus) => {
+  //   if (!window.confirm(`Are you sure you want to make this game ${currentStatus ? 'inactive' : 'active'}?`)) return;
+  //   try {
+  //     await axios.put(`${API_BASE_URL}/admin/games/${gameId}/toggle-active`, {}, {
+  //       headers: { Authorization: `Bearer ${token}` }
+  //     });
+  //     toast.success(`Game marked as ${currentStatus ? 'inactive' : 'active'}!`);
+  //     fetchGames();
+  //   } catch (err) {
+  //     toast.error(err.response?.data?.message || 'Failed to toggle game status');
+  //   }
+  // };
+
+  // ── Delete Game ──
+  const handleDeleteGame = async (gameId) => {
+    if (!window.confirm('Are you sure you want to delete this game? To delete a game, it must NOT have any active draws.')) return;
     try {
-      await axios.put(`${API_BASE_URL}/admin/games/${gameId}/toggle-active`, {}, {
+      await axios.delete(`${API_BASE_URL}/admin/games/${gameId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success(`Game marked as ${currentStatus ? 'inactive' : 'active'}!`);
+      toast.success('Game deleted successfully!');
       fetchGames();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to toggle game status');
+      toast.error(err.response?.data?.message || 'Failed to delete game. Ensure all of its draws are deleted first.');
     }
   };
 
@@ -265,7 +297,7 @@ export default function ManageLotteryGame() {
               <FiX size={20} />
             </button>
           </div>
-          <form onSubmit={handleCreateDraw} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <form onSubmit={handleCreateDraw} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Game</label>
               <select value={selectedGameId} onChange={e => setSelectedGameId(e.target.value)}
@@ -275,16 +307,26 @@ export default function ManageLotteryGame() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Scheduled At</label>
-              <input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)}
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Draw Date</label>
+              <input type="date" value={drawDate} onChange={e => setDrawDate(e.target.value)}
                 className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-red-500 transition-colors" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Time Slot</label>
+              <select value={drawHour} onChange={e => setDrawHour(e.target.value)}
+                className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-red-500 transition-colors">
+                <option value="">Select time...</option>
+                {TIME_SLOTS.map(s => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Ticket Price (₹)</label>
               <input type="number" value={ticketPrice} onChange={e => setTicketPrice(e.target.value)} placeholder="e.g. 100" min="1" step="0.01"
                 className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition-colors" />
             </div>
-            <div className="md:col-span-3 flex flex-col gap-4">
+            <div className="md:col-span-4 flex flex-col gap-4">
               {/* Banner Upload */}
               <div>
                 <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Draw Banner Image (1920×1080)</label>
@@ -339,16 +381,20 @@ export default function ManageLotteryGame() {
         ) : (
           <div className="flex flex-wrap gap-3">
             {games.map(g => (
-              <div key={g.id} className={`bg-[#1e293b] border ${g.is_active ? 'border-indigo-500/20' : 'border-slate-700 opacity-60'} rounded-xl px-5 py-3 flex items-center justify-between gap-3 w-full sm:w-auto min-w-[200px]`}>
+              <div key={g.id} className="bg-[#1e293b] border border-indigo-500/20 rounded-xl px-5 py-3 flex items-center gap-3 w-full sm:w-auto min-w-[200px]">
                 <div className="flex items-center gap-3">
-                  <span className={`w-2 h-2 rounded-full ${g.is_active ? 'bg-indigo-500' : 'bg-slate-500'} shrink-0`}></span>
+                  <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0"></span>
                   <div>
-                    <p className="text-white font-semibold text-sm">{g.name} {!g.is_active && <span className="text-xs text-red-400 ml-1 block sm:inline">Inactive</span>}</p>
+                    <p className="text-white font-semibold text-sm">{g.name}</p>
                     <p className="text-slate-500 text-xs font-mono">/{g.slug}</p>
                   </div>
                 </div>
-                <button onClick={() => handleToggleGame(g.id, g.is_active)} className="text-xs text-slate-400 hover:text-white underline shrink-0 whitespace-nowrap">
+                {/* Toggle active/inactive button commented out */}
+                {/* <button onClick={() => handleToggleGame(g.id, g.is_active)} className="text-xs text-slate-400 hover:text-white underline shrink-0 whitespace-nowrap">
                   {g.is_active ? 'Set Inactive' : 'Set Active'}
+                </button> */}
+                <button onClick={() => handleDeleteGame(g.id)} className="text-xs text-red-400 hover:text-red-300 underline shrink-0 whitespace-nowrap">
+                  Delete Game
                 </button>
               </div>
             ))}
@@ -365,6 +411,7 @@ export default function ManageLotteryGame() {
           <table className="w-full text-left text-sm text-slate-300">
             <thead className="bg-[#0f172a] text-slate-400 font-semibold uppercase text-xs">
               <tr>
+                {/* <th className="px-4 py-4">Banner</th> */}
                 <th className="px-6 py-4">Game</th>
                 <th className="px-6 py-4">Scheduled At</th>
                 <th className="px-6 py-4">Ticket Price</th>
@@ -374,11 +421,22 @@ export default function ManageLotteryGame() {
             </thead>
             <tbody className="divide-y divide-[#334155]">
               {loadingDraws ? (
-                <tr><td colSpan="5" className="text-center py-10 text-slate-500">Loading draws...</td></tr>
+                <tr><td colSpan="6" className="text-center py-10 text-slate-500">Loading draws...</td></tr>
               ) : draws.length === 0 ? (
-                <tr><td colSpan="5" className="text-center py-10 text-slate-500">No lottery draws found. Create one above.</td></tr>
+                <tr><td colSpan="6" className="text-center py-10 text-slate-500">No lottery draws found. Create one above.</td></tr>
               ) : draws.map(draw => (
                 <tr key={draw.id} className="hover:bg-slate-800/40 transition-colors">
+                  {/* <td className="px-4 py-3">
+                    {draw.banner_url ? (
+                      <img
+                        src={draw.banner_url}
+                        alt="banner"
+                        className="w-20 h-11 object-cover rounded-lg border border-slate-700"
+                      />
+                    ) : (
+                      <div className="w-20 h-11 rounded-lg border border-slate-700 bg-slate-800 flex items-center justify-center text-slate-600 text-xs">No img</div>
+                    )}
+                  </td> */}
                   <td className="px-6 py-4">
                     <span className="font-semibold text-white">{draw.game?.name}</span>
                     <span className="text-xs text-slate-500 font-mono block">/{draw.game?.slug}</span>

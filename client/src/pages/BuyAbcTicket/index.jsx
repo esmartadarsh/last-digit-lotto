@@ -244,6 +244,7 @@ export default function BuyAbcTicket() {
                     { label: "5", color: "linear-gradient(135deg, #2563eb, #60a5fa)" },
                 ]}
                 onHowToPlay={() => setHowToPlayOpen(true)}
+                bannerUrl={activeDraw?.banner_url}
             />
 
             {/* Buying / History tabs */}

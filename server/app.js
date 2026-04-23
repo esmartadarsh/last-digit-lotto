@@ -21,12 +21,15 @@ const app = express();
 app.use(helmet());
 app.use(morgan('dev'));
 
+
 // ── CORS
 app.use(cors({
   origin: [
     process.env.CLIENT_URL || 'http://localhost:5173',
     'capacitor://localhost',
     'http://localhost',
+    'http://127.0.0.1',
+    'http://127.0.0.1:5173'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],

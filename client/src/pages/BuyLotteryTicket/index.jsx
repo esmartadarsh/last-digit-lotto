@@ -200,6 +200,7 @@ export default function BuyLotteryTicket() {
         username={user?.name || "Player"}
         drawNumber={`NO.${activeDraw?.id.substring(0,8)}`}
         drawTime={activeDraw ? new Date(activeDraw.scheduled_at).toLocaleString('en-GB') : "N/A"}
+        bannerUrl={activeDraw?.banner_url}
       />
 
       <JackpotNumbers balls={JACKPOT_BALLS} />

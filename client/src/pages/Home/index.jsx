@@ -84,7 +84,7 @@ export default function Home() {
             <JackpotCard />
 
             {/* ── Quick Actions ── */}
-            <QuickActions />
+            {/* <QuickActions /> */}
 
             {/* ── Lottery Games  ── */}
             <div className="px-4 mt-6">
@@ -104,8 +104,8 @@ export default function Home() {
                                 className="relative overflow-hidden rounded-2xl cursor-pointer active:scale-95 transition-all h-32 bg-gray-200"
                                 onClick={() => navigate(`/lottery-ticket/${draw.game.slug}`)}
                             >
-                                {draw.game.banner_url ? (
-                                    <img src={draw.game.banner_url} alt={draw.game.name} className="w-full h-full object-cover" />
+                                {draw.banner_url || draw.game.banner_url ? (
+                                    <img src={draw.banner_url || draw.game.banner_url} alt={draw.game.name} className="w-full h-full object-cover" />
                                 ) : (
                                     <div className="w-full h-full bg-gradient-to-br from-red-500 to-pink-600 flex items-center justify-center p-2 text-center text-white font-bold">
                                         {draw.game.name}
@@ -145,8 +145,8 @@ export default function Home() {
                                 className="relative overflow-hidden rounded-2xl cursor-pointer active:scale-95 transition-all h-32 bg-gray-200"
                                 onClick={() => navigate(`/abc-ticket/${draw.game.slug}`)}
                             >
-                                {draw.game.banner_url ? (
-                                    <img src={draw.game.banner_url} alt={draw.game.name} className="w-full h-full object-cover" />
+                                {draw.banner_url || draw.game.banner_url ? (
+                                    <img src={draw.banner_url || draw.game.banner_url} alt={draw.game.name} className="w-full h-full object-cover" />
                                 ) : (
                                     <div className="w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center p-2 text-center text-white font-bold">
                                         {draw.game.name}

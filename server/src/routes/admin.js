@@ -416,4 +416,31 @@ router.put('/games/:gameId/toggle-active', async (req, res) => {
   }
 });
 
+/**
+ * DELETE /api/admin/games/:gameId
+ * Delete a game — only allowed when ALL of its draws have been deleted first.
+ * (Draws themselves can only be deleted when they have no tickets.)
+ * Full enforcement chain: no tickets → delete draw → no draws → delete game.
+ */
+router.delete('/games/:gameId', async (req, res) => {
+  try {
+    const game = await Game.findByPk(req.params.gameId);
+    if (!game) return res.status(404).json({ success: false, message: 'Game not found' });
+
+    // Block if any draws still exist for this game
+    const drawCount = await Draw.count({ where: { game_id: game.id } });
+    if (drawCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot delete game. Please delete all ${drawCount} draw(s) belonging to this game first.`,
+      });
+    }
+
+    await game.destroy();
+    return res.json({ success: true, message: 'Game deleted successfully.' });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;

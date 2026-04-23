@@ -35,7 +35,7 @@ export default function Header({ user }) {
             </div>
 
             {/* Search bar style promo strip */}
-            <div
+            {/* <div
                 className="mt-4 flex items-center gap-2 px-4 py-2.5 rounded-2xl"
                 style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)' }}
             >
@@ -44,7 +44,7 @@ export default function Header({ user }) {
                     Refer a friend & earn <span className="text-yellow-300 font-black">₹200 bonus!</span>
                 </p>
                 <span className="text-white text-xs font-bold opacity-70">›</span>
-            </div>
+            </div> */}
         </div>
     );
 }

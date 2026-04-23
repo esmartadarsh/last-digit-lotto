@@ -2,31 +2,31 @@ import { FiSettings, FiHelpCircle, FiLogOut, FiChevronRight, FiCreditCard, FiBel
 import useAuthStore from '../store/useAuthStore';
 
 const MENU_ITEMS = [
-  {
-    icon: FiCreditCard, label: 'Payment Methods', sub: 'Cards & UPI linked',
-    iconBg: '#eff6ff', iconColor: '#2563eb',
-    badge: null,
-  },
+  // {
+  //   icon: FiCreditCard, label: 'Payment Methods', sub: 'Cards & UPI linked',
+  //   iconBg: '#eff6ff', iconColor: '#2563eb',
+  //   badge: null,
+  // },
   {
     icon: FiBell, label: 'Notifications', sub: 'Alerts & updates',
     iconBg: '#fff7ed', iconColor: '#ea580c',
     badge: '3',
   },
-  {
-    icon: FiShield, label: 'Security', sub: '2FA enabled',
-    iconBg: '#f0fdf4', iconColor: '#16a34a',
-    badge: null,
-  },
-  {
-    icon: FiGift, label: 'Refer & Earn', sub: 'Get ₹200 per referral',
-    iconBg: '#fdf4ff', iconColor: '#9333ea',
-    badge: 'NEW',
-  },
-  {
-    icon: FiSettings, label: 'Account Settings', sub: 'Preferences & data',
-    iconBg: '#f9fafb', iconColor: '#6b7280',
-    badge: null,
-  },
+  // {
+  //   icon: FiShield, label: 'Security', sub: '2FA enabled',
+  //   iconBg: '#f0fdf4', iconColor: '#16a34a',
+  //   badge: null,
+  // },
+  // {
+  //   icon: FiGift, label: 'Refer & Earn', sub: 'Get ₹200 per referral',
+  //   iconBg: '#fdf4ff', iconColor: '#9333ea',
+  //   badge: 'NEW',
+  // },
+  // {
+  //   icon: FiSettings, label: 'Account Settings', sub: 'Preferences & data',
+  //   iconBg: '#f9fafb', iconColor: '#6b7280',
+  //   badge: null,
+  // },
   {
     icon: FiHelpCircle, label: 'Help & Support', sub: '24/7 live chat',
     iconBg: '#eff6ff', iconColor: '#0284c7',
@@ -112,12 +112,12 @@ export default function Profile() {
             >
               ✓ Verified Player
             </span>
-            <span
+            {/* <span
               className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"
               style={{ background: '#fef3c7', color: '#92400e' }}
             >
               ⭐ Gold Level
-            </span>
+            </span> */}
           </div>
         </div>
       </div>
@@ -138,7 +138,7 @@ export default function Profile() {
       </div>
 
       {/* ── Promo Banner ── */}
-      <div className="px-4 mt-4">
+      {/* <div className="px-4 mt-4">
         <div
           className="flex items-center gap-3 p-4 rounded-2xl"
           style={{
@@ -158,7 +158,7 @@ export default function Profile() {
             Invite →
           </button>
         </div>
-      </div>
+      </div> */}
 
       {/* ── Menu ── */}
       <div className="px-4 mt-4">

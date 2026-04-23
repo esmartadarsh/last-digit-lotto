@@ -68,7 +68,6 @@ router.post('/sync', async (req, res) => {
  * POST /api/auth/admin/login
  * Custom JWT-based manual login for admins bypassing Firebase.
  */
-const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { Admin } = require('../models');
 
@@ -84,8 +83,8 @@ router.post('/admin/login', async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    const match = await bcrypt.compare(password, adminUser.password);
-    if (!match) {
+    // Plain-text password comparison (passwords stored as-is, no hashing)
+    if (password !== adminUser.password) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
