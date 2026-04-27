@@ -1,10 +1,16 @@
-import img1 from "@/assets/imgs/results/2024-04-04_01-00-PM.webp";
-import img2 from "@/assets/imgs/results/2026-04-03_06-00-PM.webp";
-import img3 from "@/assets/imgs/results/2026-04-03_08-00-PM.webp";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import imgFallback from "@/assets/imgs/results/2026-04-03_06-00-PM.webp"; // Using one as default fallback if URL missing
 
 const formatDateTime = (dateStr, timeStr) => {
+    // Note: since the API provides a full datetime, we may just format that directly
     const date = new Date(`${dateStr}T${timeStr}`);
+    if (isNaN(date)) {
+        // Fallback for full ISO string handling
+        const isoDate = new Date(dateStr);
+        if(!isNaN(isoDate)){
+            return formatDateTimeFromISO(isoDate);
+        }
+    }
 
     const day = date.getDate();
     const suffix =
@@ -23,44 +29,54 @@ const formatDateTime = (dateStr, timeStr) => {
     return `${formattedDate} • ${formattedTime} Draw`;
 };
 
-const resultsData = [
-    {
-        date: "2026-04-03",
-        results: [
-            {
-                time: "18:00",
-                balls: ["3", "1", "B", "7", "4", "9", "2", "5"],
-                prize: "₹1,00,000",
-                image: img2
-            },
-            {
-                time: "20:00",
-                balls: ["9", "2", "A", "4", "1", "8", "3", "6"],
-                prize: "₹50,000",
-                image: img3
-            }
-        ]
-    },
-    {
-        date: "2024-04-04",
-        results: [
-            {
-                time: "13:00",
-                balls: ["5", "7", "K", "3", "2", "1", "8", "0"],
-                prize: "₹25,000",
-                image: img1
-            }
-        ]
-    }
-];
+const formatDateTimeFromISO = (date) => {
+    const day = date.getDate();
+    const suffix =
+        day % 10 === 1 && day !== 11 ? "st" :
+            day % 10 === 2 && day !== 12 ? "nd" :
+                day % 10 === 3 && day !== 13 ? "rd" : "th";
 
-export default function ResultsSection() {
+    const formattedDate = `${day}${suffix} ${date.toLocaleString("en-IN", { month: "long" })}`;
+
+    const formattedTime = date.toLocaleString("en-IN", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true
+    });
+
+    return `${formattedDate} • ${formattedTime} Draw`;
+};
+
+export default function ResultsSection({ data = [] }) {
     const [selectedImage, setSelectedImage] = useState(null);
+
+    // Group the results by date
+    const groupedData = useMemo(() => {
+        const groups = {};
+        data.forEach(r => {
+            const fullDate = r.draw?.scheduled_at ? new Date(r.draw.scheduled_at) : new Date(r.announced_at);
+            const dateStr = fullDate.toISOString().split("T")[0];
+            
+            if (!groups[dateStr]) {
+                groups[dateStr] = { date: dateStr, results: [] };
+            }
+            
+            groups[dateStr].results.push({
+                time: fullDate, // Using full date object for time
+                balls: r.winning_number ? r.winning_number.split("") : [], // Split 8 chars into balls
+                prize: r.draw?.game?.name || "1st Prize", // Assuming game name or fallback
+                image: r.result_image_url || imgFallback
+            });
+        });
+        
+        // Convert to array and sort by date descending
+        return Object.values(groups).sort((a, b) => new Date(b.date) - new Date(a.date));
+    }, [data]);
 
     return (
         <div className="px-4 mt-6 pb-36 flex flex-col gap-4">
 
-            {resultsData.map((day, i) => (
+            {groupedData.map((day, i) => (
                 <div key={i} className="flex flex-col gap-3">
 
                     {/* Day Heading */}
@@ -89,7 +105,7 @@ export default function ResultsSection() {
                                 {/* Left */}
                                 <div className="flex flex-col">
                                     <p className="text-[13px] font-semibold text-gray-800">
-                                        {formatDateTime(day.date, result.time)}
+                                        {formatDateTimeFromISO(result.time)}
                                     </p>
                                     <span className="text-[11px] text-gray-400">
                                         Tap to view result

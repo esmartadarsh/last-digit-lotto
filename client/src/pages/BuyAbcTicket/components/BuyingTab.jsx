@@ -259,7 +259,7 @@ export default function BuyingTab({
             </div>
 
             {/* ══ TRIPLE DIGIT ══ */}
-            <div className="bg-white rounded-xl px-4 py-3 border border-gray-100 shadow-sm">
+            <div className="bg-white rounded-xl px-4 py-3 border border-gray-100 shadow-sm mt-3">
                 <SectionHeader
                     title="Triple Digit"
                     perTicket={prices.triple}
@@ -267,52 +267,65 @@ export default function BuyingTab({
                     onQuickGuess={() => quickGuess("triple")}
                 />
 
-                {/* Balls + digit boxes */}
-                <div className="flex items-center gap-2">
-                    {["A", "B", "C"].map((k) => {
-                        const colors = { A: "red", B: "orange", C: "blue" };
-                        return <Ball key={k} label={k} color={colors[k]} />;
-                    })}
-                    <div className="flex gap-2 ml-2">
-                        {["a", "b", "c"].map((k) => (
-                            <NumBox
-                                key={k}
-                                value={triple[k]}
-                                onChange={(v) =>
-                                    setTriple((prev) => ({ ...prev, [k]: v }))
-                                }
-                            />
-                        ))}
-                    </div>
-                </div>
+                <div className="flex flex-row justify-between">
+                    {/* Balls + digit boxes */}
+                    <div className="flex flex-col items-center gap-2">
+                        <div className="flex flex-row gap-2">
+                            {["A", "B", "C"].map((k) => {
+                                const colors = { A: "red", B: "orange", C: "blue" };
+                                return <Ball key={k} label={k} color={colors[k]} />;
+                            })}
+                        </div>
 
-                {/* Quantity stepper + BOX + ADD */}
-                <div className="flex items-center justify-between mt-3">
-                    {isTripleFilled && (
-                        <QuantityStepper qty={tripleQty} onChange={setTripleQty} />
-                    )}
-                    <div className="flex gap-2">
-                        <button
-                            className="px-5 py-2 rounded-lg font-black text-white text-[12px] active:scale-95 transition-all"
-                            style={{
-                                background: "linear-gradient(135deg, #16a34a, #15803d)",
-                                boxShadow: "0 4px 12px rgba(22,163,74,0.3)",
-                            }}
-                        >
-                            BOX
-                        </button>
-                        <AddBtn
-                            disabled={!triple.a || !triple.b || !triple.c}
-                            onClick={() => {
-                                if (!triple.a || !triple.b || !triple.c) return;
-                                addSelection("triple", prices.triple, triple, tripleQty);
-                                setTriple({ a: "", b: "", c: "" });
-                                setTripleQty(1);
-                            }}
-                        />
+                        <div className="flex gap-3">
+                            {["a", "b", "c"].map((k) => (
+                                <NumBox
+                                    key={k}
+                                    value={triple[k]}
+                                    onChange={(v) =>
+                                        setTriple((prev) => ({
+                                            ...prev,
+                                            [k]: v,
+                                        }))
+                                    }
+                                />
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Quantity stepper + BOX + ADD */}
+                    <div className={`flex flex-col items-center gap-2 ${isTripleFilled ? "justify-evenly" : "justify-end"}`}>
+                        {isTripleFilled && (
+                            <QuantityStepper qty={tripleQty} onChange={setTripleQty} />
+                        )}
+
+                        <div className="flex gap-2">
+                            <button
+                                className="px-5 py-2 rounded-lg font-black text-white text-[12px] active:scale-95 transition-all"
+                                style={{
+                                    background: "linear-gradient(135deg, #16a34a, #15803d)",
+                                    boxShadow: "0 4px 12px rgba(22,163,74,0.3)",
+                                }}
+                            >
+                                BOX
+                            </button>
+
+                            <AddBtn
+                                disabled={!triple.a || !triple.b || !triple.c}
+                                onClick={() => {
+                                    if (!triple.a || !triple.b || !triple.c) return;
+
+                                    addSelection("triple", prices.triple, triple, tripleQty);
+
+                                    setTriple({ a: "", b: "", c: "" });
+                                    setTripleQty(1);
+                                }}
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
+
         </div>
     );
 }

@@ -20,12 +20,12 @@ function useCountdown(targetDateStr) {
 
     useEffect(() => {
         if (!targetDateStr) return;
-        
+
         const tick = () => {
             const diff = new Date(targetDateStr).getTime() - new Date().getTime();
             setSecs(diff > 0 ? Math.floor(diff / 1000) : 0);
         };
-        
+
         tick();
         const id = setInterval(tick, 1000);
         return () => clearInterval(id);
@@ -54,6 +54,9 @@ export default function BuyAbcTicket() {
     const [loading, setLoading] = useState(true);
     const [isPurchasing, setIsPurchasing] = useState(false);
 
+    const [activeTab, setActiveTab] = useState("buying");
+    const [recentResults, setRecentResults] = useState([]);
+
     useEffect(() => {
         const fetchGameAndDraws = async () => {
             try {
@@ -71,12 +74,21 @@ export default function BuyAbcTicket() {
         fetchGameAndDraws();
     }, [game]);
 
+    useEffect(() => {
+        if (activeTab === "history" && recentResults.length === 0) {
+            axios.get(`${API_BASE_URL}/results/abc/recent?game=${game}`)
+                .then(res => {
+                    if (res.data.success) setRecentResults(res.data.results);
+                })
+                .catch(err => console.error("Failed to load results", err));
+        }
+    }, [activeTab, game, recentResults.length]);
+
     /* ── Tab + time slot ── */
-    const [activeTab, setActiveTab] = useState("buying");
-    
+
     // time_slot is usually "1PM" or "8PM" from DB
     const [selectedTimeIndex, setSelectedTimeIndex] = useState(0);
-    
+
     const activeDraw = apiDraws[selectedTimeIndex] || null;
     const secs = useCountdown(activeDraw?.scheduled_at);
     const digits = toDigits(secs);
@@ -87,7 +99,7 @@ export default function BuyAbcTicket() {
     const basePrice = activeDraw ? parseFloat(activeDraw.ticket_price) : 10.4;
     const prices = {
         single: basePrice,
-        double: basePrice * 1.15, // approx logic or hardcode for now
+        double: basePrice * 1.15,
         triple: basePrice * 2.88
     };
 
@@ -175,7 +187,7 @@ export default function BuyAbcTicket() {
                 position = 'ABC';
                 digits = `${s.data.a}${s.data.b}${s.data.c}`;
             }
-            
+
             return {
                 type: s.type,
                 position,
@@ -208,7 +220,7 @@ export default function BuyAbcTicket() {
     };
 
     if (loading) {
-       return <div className="min-h-screen flex items-center justify-center bg-[#f0f2f8]">Loading...</div>;
+        return <div className="min-h-screen flex items-center justify-center bg-[#f0f2f8]">Loading...</div>;
     }
 
     return (
@@ -223,7 +235,7 @@ export default function BuyAbcTicket() {
             />
 
             {/* Time selector tabs */}
-            {apiDraws.length > 0 ? (
+            {/* {apiDraws.length > 0 ? (
                 <TimeSelectorTabs
                     times={apiDraws.map((d) => d.time_slot || new Date(d.scheduled_at).toLocaleTimeString())}
                     activeIndex={selectedTimeIndex}
@@ -231,7 +243,7 @@ export default function BuyAbcTicket() {
                 />
             ) : (
                 <div className="p-4 text-center text-red-500 font-bold">No active draws for this game.</div>
-            )}
+            )} */}
 
             {/* Draw banner */}
             <DrawBanner
@@ -266,7 +278,7 @@ export default function BuyAbcTicket() {
             )}
 
             {/* History tab */}
-            {activeTab === "history" && <HistoryTab data={[]} />}
+            {activeTab === "history" && <HistoryTab data={recentResults} />}
 
             {/* Bottom bar */}
             <BottomBar

@@ -413,9 +413,9 @@ export default function ManageAbcGame() {
                 {/* <button onClick={() => handleToggleGame(g.id, g.is_active)} className="text-xs text-slate-400 hover:text-white underline shrink-0 whitespace-nowrap">
                   {g.is_active ? 'Set Inactive' : 'Set Active'}
                 </button> */}
-                <button onClick={() => handleDeleteGame(g.id)} className="text-xs text-red-400 hover:text-red-300 underline shrink-0 whitespace-nowrap">
+                {/* <button onClick={() => handleDeleteGame(g.id)} className="text-xs text-red-400 hover:text-red-300 underline shrink-0 whitespace-nowrap">
                   Delete Game
-                </button>
+                </button> */}
               </div>
             ))}
           </div>

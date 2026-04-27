@@ -35,6 +35,7 @@ export default function BuyLotteryTicket() {
 
   /* ── Outer tab (Buying / Result History) ── */
   const [activeTab, setActiveTab] = useState("buying");
+  const [recentResults, setRecentResults] = useState([]);
 
   /* ── Purchase mode ── */
   const [buyMode, setBuyMode] = useState("quickPicks");
@@ -74,6 +75,19 @@ export default function BuyLotteryTicket() {
     };
     fetchGameAndDraw();
   }, [game]);
+
+  useEffect(() => {
+    if (activeTab === "history" && recentResults.length === 0) {
+      axios
+        .get(`${API_BASE_URL}/results/lottery/recent?game=${game}`)
+        .then((res) => {
+          if (res.data.success) {
+            setRecentResults(res.data.results);
+          }
+        })
+        .catch((err) => console.error("Failed to fetch results", err));
+    }
+  }, [activeTab, game, recentResults.length]);
 
   /* ── Derived totals ── */
   const totalTickets = cartItems.reduce(
@@ -235,7 +249,7 @@ export default function BuyLotteryTicket() {
         />
       )}
 
-      {activeTab === "history" && <ResultsSection />}
+      {activeTab === "history" && <ResultsSection data={recentResults} />}
 
       <BottomBar 
          ticketsCount={totalTickets} 

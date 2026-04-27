@@ -23,34 +23,47 @@ function Ball({ label, color }) {
 export default function HistoryTab({ data = [] }) {
     return (
         <div className="px-3 mt-4 pb-28 space-y-3">
-            {data.map((r, i) => (
-                <div
-                    key={i}
-                    className="bg-white rounded-xl overflow-hidden border border-gray-100 shadow-sm"
-                >
-                    {/* Header */}
-                    <div
-                        className="px-4 py-2 flex justify-between items-center"
-                        style={{
-                            background: "linear-gradient(135deg, #2e7d32, #43a047)",
-                        }}
-                    >
-                        <span className="text-white font-black text-[12px]">
-                            {r.date}
-                        </span>
-                        <span className="text-white text-[11px] font-bold">
-                            {r.time}
-                        </span>
-                    </div>
+            {data.length === 0 && (
+                 <div className="text-center text-gray-400 font-medium py-8">No results found.</div>
+            )}
+            {data.map((r, i) => {
+                const fullDate = r.draw?.scheduled_at ? new Date(r.draw.scheduled_at) : new Date(r.announced_at);
+                const dateStr = fullDate.toLocaleDateString("en-IN", {
+                    day: "2-digit",
+                    month: "long",
+                    year: "numeric"
+                });
+                const timeSlot = r.draw?.time_slot || fullDate.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
 
-                    {/* Balls */}
-                    <div className="flex items-center gap-3 px-4 py-3">
-                        <Ball label={r.a} color="red" />
-                        <Ball label={r.b} color="orange" />
-                        <Ball label={r.c} color="blue" />
+                return (
+                    <div
+                        key={i}
+                        className="bg-white rounded-xl overflow-hidden border border-gray-100 shadow-sm"
+                    >
+                        {/* Header */}
+                        <div
+                            className="px-4 py-2 flex justify-between items-center"
+                            style={{
+                                background: "linear-gradient(135deg, #2e7d32, #43a047)",
+                            }}
+                        >
+                            <span className="text-white font-black text-[12px]">
+                                {dateStr}
+                            </span>
+                            <span className="text-white text-[11px] font-bold">
+                                {timeSlot}
+                            </span>
+                        </div>
+
+                        {/* Balls */}
+                        <div className="flex items-center gap-3 px-4 py-3">
+                            <Ball label={r.a} color="red" />
+                            <Ball label={r.b} color="orange" />
+                            <Ball label={r.c} color="blue" />
+                        </div>
                     </div>
-                </div>
-            ))}
+                );
+            })}
         </div>
     );
 }
