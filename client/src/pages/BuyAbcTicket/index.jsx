@@ -93,14 +93,11 @@ export default function BuyAbcTicket() {
     const secs = useCountdown(activeDraw?.scheduled_at);
     const digits = toDigits(secs);
 
-    // If activeDraw exists, use its price as 'single', and calculate double/triple based on ratios if needed. 
-    // Actually, in the backend price is unified per draw, but slots dictate base prices.
-    // Let's dynamically map it. Single = base, double = base + ~2, triple = base * ~3
-    const basePrice = activeDraw ? parseFloat(activeDraw.ticket_price) : 10.4;
+    // Use actual prices set by admin in the draw record
     const prices = {
-        single: basePrice,
-        double: basePrice * 1.15,
-        triple: basePrice * 2.88
+        single: activeDraw ? parseFloat(activeDraw.single_digit_price) : 0,
+        double: activeDraw ? parseFloat(activeDraw.double_digit_price) : 0,
+        triple: activeDraw ? parseFloat(activeDraw.triple_digit_price) : 0,
     };
 
     /* ── Number inputs ── */
@@ -169,6 +166,12 @@ export default function BuyAbcTicket() {
     };
 
     const handlePurchase = async () => {
+        // Auth gate — browsing is open, but payment requires login
+        if (!user || !token) {
+            toast.error("Please log in to purchase tickets");
+            navigate('/login', { state: { from: `/abc-ticket/${game}` } });
+            return;
+        }
         if (!activeDraw) return toast.error("No active draw available");
         if (selections.length === 0) return toast.error("Cart is empty");
         if (user.balance < totalCost) return toast.error("Insufficient balance!");

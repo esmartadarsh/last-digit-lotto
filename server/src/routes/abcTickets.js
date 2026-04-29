@@ -18,11 +18,6 @@ const VALID_POSITIONS = {
   triple: ['ABC'],
 };
 
-// Prices per time slot — matches frontend constants
-const SLOT_PRICES = {
-  '1PM': { single: 10.4, double: 12,  triple: 30 },
-  '8PM': { single: 11,   double: 13,  triple: 32 },
-};
 
 /**
  * POST /api/abc-tickets/purchase
@@ -65,8 +60,16 @@ router.post(
           throw Object.assign(new Error('This is not an ABC draw'), { status: 400 });
         }
 
-        // 2. Get prices for this time slot
-        const prices = SLOT_PRICES[draw.time_slot] || SLOT_PRICES['1PM'];
+        // 2. Get prices from the draw record set by admin
+        const prices = {
+          single: parseFloat(draw.single_digit_price),
+          double: parseFloat(draw.double_digit_price),
+          triple: parseFloat(draw.triple_digit_price),
+        };
+
+        if (isNaN(prices.single) || isNaN(prices.double) || isNaN(prices.triple)) {
+          throw Object.assign(new Error('Draw prices are not configured. Please contact admin.'), { status: 400 });
+        }
 
         // 3. Validate each selection and build rows
         const ticketRows = [];

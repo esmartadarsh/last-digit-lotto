@@ -21,14 +21,25 @@ router.use(authenticate, adminOnly);
  * POST /api/admin/draws
  * Create a new draw manually.
  */
+
+const VALID_TIME_SLOTS = [
+  '00:00', '01:00', '02:00', '03:00', '04:00', '05:00',
+  '06:00', '07:00', '08:00', '09:00', '10:00', '11:00',
+  '12:00', '13:00', '14:00', '15:00', '16:00', '17:00',
+  '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'
+];
+
 router.post(
   '/draws',
   [
     body('game_id').isInt({ min: 1 }),
     body('scheduled_at').isISO8601().withMessage('Must be ISO date e.g. 2026-04-15T13:00:00'),
-    body('ticket_price').isFloat({ min: 1 }),
-    body('time_slot').optional().isIn(['1PM', '8PM']),
+    body('ticket_price').optional({ nullable: true }).isFloat({ min: 0 }),
+    body('time_slot').optional({ nullable: true }).isIn(VALID_TIME_SLOTS),
     body('banner_url').optional().isURL(),
+    body('single_digit_price').optional({ nullable: true }).isFloat({ min: 0 }),
+    body('double_digit_price').optional({ nullable: true }).isFloat({ min: 0 }),
+    body('triple_digit_price').optional({ nullable: true }).isFloat({ min: 0 }),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -39,7 +50,10 @@ router.post(
         id: uuidv4(),
         game_id: req.body.game_id,
         scheduled_at: req.body.scheduled_at,
-        ticket_price: req.body.ticket_price,
+        ticket_price: req.body.ticket_price != null ? req.body.ticket_price : null,
+        single_digit_price: req.body.single_digit_price != null ? req.body.single_digit_price : null,
+        double_digit_price: req.body.double_digit_price != null ? req.body.double_digit_price : null,
+        triple_digit_price: req.body.triple_digit_price != null ? req.body.triple_digit_price : null,
         time_slot: req.body.time_slot || null,
         banner_url: req.body.banner_url || null,
       });
@@ -88,7 +102,7 @@ router.delete('/draws/:drawId', async (req, res) => {
 
     const isLottery = draw.game && draw.game.type === 'lottery';
     const Model = isLottery ? LotteryTicket : AbcTicket;
-    
+
     if (Model) {
       const ticketsCount = await Model.count({ where: { draw_id: draw.id } });
       if (ticketsCount > 0) {
@@ -119,7 +133,7 @@ router.delete('/draws/:drawId/banner', async (req, res) => {
     const match = url.match(/\/o\/([^?]+)/);
     if (match) {
       const filePath = decodeURIComponent(match[1]);
-      await bucket.file(filePath).delete().catch(() => {}); // safe delete
+      await bucket.file(filePath).delete().catch(() => { }); // safe delete
     }
 
     await draw.update({ banner_url: null });
@@ -408,7 +422,7 @@ router.put('/games/:gameId/toggle-active', async (req, res) => {
   try {
     const game = await Game.findByPk(req.params.gameId);
     if (!game) return res.status(404).json({ success: false, message: 'Game not found' });
-    
+
     await game.update({ is_active: !game.is_active });
     return res.json({ success: true, game, message: `Game is now ${game.is_active ? 'active' : 'inactive'}` });
   } catch (err) {

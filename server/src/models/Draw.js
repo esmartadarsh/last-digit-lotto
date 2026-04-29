@@ -22,10 +22,23 @@ const Draw = sequelize.define('Draw', {
     type: DataTypes.ENUM('1PM', '8PM'),
     allowNull: true,
   },
-  // Price snapshot at the time of draw creation
+  // Price snapshot at the time of draw creation (used for lottery draws)
   ticket_price: {
     type: DataTypes.DECIMAL(8, 2),
-    allowNull: false,
+    allowNull: true,
+  },
+  // ABC-game specific prices (single/double/triple digit bets)
+  single_digit_price: {
+    type: DataTypes.DECIMAL(8, 2),
+    allowNull: true,
+  },
+  double_digit_price: {
+    type: DataTypes.DECIMAL(8, 2),
+    allowNull: true,
+  },
+  triple_digit_price: {
+    type: DataTypes.DECIMAL(8, 2),
+    allowNull: true,
   },
   status: {
     type: DataTypes.ENUM('open', 'closed', 'processing', 'completed'),

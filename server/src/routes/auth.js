@@ -72,6 +72,7 @@ const jwt = require('jsonwebtoken');
 const { Admin } = require('../models');
 
 router.post('/admin/login', async (req, res) => {
+
   const { phone, password } = req.body;
   if (!phone || !password) {
     return res.status(400).json({ success: false, message: 'Phone and password are required' });
@@ -79,6 +80,7 @@ router.post('/admin/login', async (req, res) => {
 
   try {
     const adminUser = await Admin.findOne({ where: { phone } });
+    // console.log(adminUser, 'see admin users')
     if (!adminUser) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }

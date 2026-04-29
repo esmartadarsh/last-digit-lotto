@@ -138,10 +138,10 @@ function SameSetPanel({
                     {opt}
                   </p>
 
-                  {/* date */}
-                  <p className="text-green-200 font-bold text-[10px] text-center pb-2.5 px-2">
+                  {/* date — commented out, schedule date should not be shown to user */}
+                  {/* <p className="text-green-200 font-bold text-[10px] text-center pb-2.5 px-2">
                     {formatCardDate(selectedDate)}
-                  </p>
+                  </p> */
                 </button>
               );
             })}
@@ -491,8 +491,8 @@ export default function BuyingSection({
         addOneTicket={addOneTicket}
       />
 
-      {/* 4 ── Draw Date Selector ── */}
-      <div
+      {/* 4 ── Draw Date Selector ── commented out, schedule date should not be shown to user */}
+      {/* <div
         className="rounded-2xl overflow-hidden"
         style={{ boxShadow: "0 4px 16px rgba(0,0,0,0.08)", border: "1px solid #f3f4f6" }}
       >
@@ -515,7 +515,7 @@ export default function BuyingSection({
             </button>
           ))}
         </div>
-      </div>
+      </div> */
 
       {/* 5 ── About Accordion ── */}
       <div

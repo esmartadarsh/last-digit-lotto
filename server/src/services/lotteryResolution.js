@@ -30,8 +30,11 @@ async function resolveLotteryDraw(drawId, winningNumber, adminUserId) {
     await draw.update({ status: 'processing' }, { transaction: t });
 
     // 2. Save winning number
+    // NOTE: announced_by is null because the announcer is an Admin (admins table),
+    // not a User (users table). The FK on lottery_results.announced_by → users.id
+    // would fail if we passed an admin's UUID.
     await LotteryResult.create(
-      { draw_id: drawId, winning_number: winningNumber.toUpperCase(), announced_by: adminUserId },
+      { draw_id: drawId, winning_number: winningNumber.toUpperCase(), announced_by: null },
       { transaction: t }
     );
 

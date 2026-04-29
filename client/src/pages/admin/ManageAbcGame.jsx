@@ -6,6 +6,7 @@ import useAuthStore from '../../store/useAuthStore';
 import ImageCropperModal from '../../components/ImageCropperModal';
 import { storage } from '../../config/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { TIME_SLOTS } from '../../data.js'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -15,21 +16,6 @@ const STATUS_COLORS = {
   processing: 'bg-blue-500/10 text-blue-400 border border-blue-500/20',
   completed: 'bg-slate-700/50 text-slate-400 border border-slate-600',
 };
-
-const TIME_SLOTS = [
-  { label: '12 AM', value: '00:00' }, { label: '1 AM', value: '01:00' },
-  { label: '2 AM', value: '02:00' }, { label: '3 AM', value: '03:00' },
-  { label: '4 AM', value: '04:00' }, { label: '5 AM', value: '05:00' },
-  { label: '6 AM', value: '06:00' }, { label: '7 AM', value: '07:00' },
-  { label: '8 AM', value: '08:00' }, { label: '9 AM', value: '09:00' },
-  { label: '10 AM', value: '10:00' }, { label: '11 AM', value: '11:00' },
-  { label: '12 PM', value: '12:00' }, { label: '1 PM', value: '13:00' },
-  { label: '2 PM', value: '14:00' }, { label: '3 PM', value: '15:00' },
-  { label: '4 PM', value: '16:00' }, { label: '5 PM', value: '17:00' },
-  { label: '6 PM', value: '18:00' }, { label: '7 PM', value: '19:00' },
-  { label: '8 PM', value: '20:00' }, { label: '9 PM', value: '21:00' },
-  { label: '10 PM', value: '22:00' }, { label: '11 PM', value: '23:00' },
-];
 
 export default function ManageAbcGame() {
   const { token } = useAuthStore();
@@ -50,8 +36,9 @@ export default function ManageAbcGame() {
   const [selectedGameId, setSelectedGameId] = useState('');
   const [drawDate, setDrawDate] = useState('');
   const [drawHour, setDrawHour] = useState('');
-  const [ticketPrice, setTicketPrice] = useState('');
-  const [timeSlot, setTimeSlot] = useState('1PM');
+  const [singleDigitPrice, setSingleDigitPrice] = useState('');
+  const [doubleDigitPrice, setDoubleDigitPrice] = useState('');
+  const [tripleDigitPrice, setTripleDigitPrice] = useState('');
   const [creatingDraw, setCreatingDraw] = useState(false);
 
   // Banner image
@@ -115,14 +102,16 @@ export default function ManageAbcGame() {
   // ── Create Draw ──
   const handleCreateDraw = async (e) => {
     e.preventDefault();
-    if (!selectedGameId || !drawDate || !drawHour || !ticketPrice) return toast.error('All fields are required');
-    // Combine date + hour slot into ISO-compatible local datetime string
+    if (!selectedGameId || !drawDate || !drawHour || !singleDigitPrice || !doubleDigitPrice || !tripleDigitPrice) {
+      return toast.error('All fields are required including all three digit prices');
+    }
     const scheduled_at = `${drawDate}T${drawHour}:00`;
+    // Derive time_slot label from hour: 13:00 → 1PM, 20:00 → 8PM, else null
+    const derivedSlot = drawHour === '13:00' ? '1PM' : drawHour === '20:00' ? '8PM' : null;
     setCreatingDraw(true);
     try {
       let banner_url = null;
 
-      // Upload banner to Firebase Storage if one was selected
       if (bannerBlob) {
         setUploadingBanner(true);
         toast.loading('Uploading banner...', { id: 'banner' });
@@ -138,14 +127,17 @@ export default function ManageAbcGame() {
         {
           game_id: parseInt(selectedGameId),
           scheduled_at,
-          ticket_price: parseFloat(ticketPrice),
-          time_slot: timeSlot,
+          single_digit_price: parseFloat(singleDigitPrice),
+          double_digit_price: parseFloat(doubleDigitPrice),
+          triple_digit_price: parseFloat(tripleDigitPrice),
+          time_slot: derivedSlot,
           banner_url,
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       toast.success('Draw created successfully!');
-      setSelectedGameId(''); setDrawDate(''); setDrawHour(''); setTicketPrice(''); setTimeSlot('1PM');
+      setSelectedGameId(''); setDrawDate(''); setDrawHour('');
+      setSingleDigitPrice(''); setDoubleDigitPrice(''); setTripleDigitPrice('');
       setBannerBlob(null); setBannerPreview(null);
       setShowDrawForm(false);
       fetchData();
@@ -310,7 +302,7 @@ export default function ManageAbcGame() {
               <FiX size={20} />
             </button>
           </div>
-          <form onSubmit={handleCreateDraw} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <form onSubmit={handleCreateDraw} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Game</label>
               <select value={selectedGameId} onChange={e => setSelectedGameId(e.target.value)}
@@ -320,20 +312,12 @@ export default function ManageAbcGame() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Time Slot</label>
-              <select value={timeSlot} onChange={e => setTimeSlot(e.target.value)}
-                className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-red-500 transition-colors">
-                <option value="1PM">1PM Draw</option>
-                <option value="8PM">8PM Draw</option>
-              </select>
-            </div>
-            <div>
               <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Draw Date</label>
               <input type="date" value={drawDate} onChange={e => setDrawDate(e.target.value)}
                 className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-red-500 transition-colors" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Scheduled Time</label>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Time Slot</label>
               <select value={drawHour} onChange={e => setDrawHour(e.target.value)}
                 className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-red-500 transition-colors">
                 <option value="">Select time...</option>
@@ -342,12 +326,24 @@ export default function ManageAbcGame() {
                 ))}
               </select>
             </div>
+
+            {/* ── ABC-specific prices ── */}
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Ticket Price (₹)</label>
-              <input type="number" value={ticketPrice} onChange={e => setTicketPrice(e.target.value)} placeholder="e.g. 10" min="1" step="0.01"
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Single Digit Price (₹)</label>
+              <input type="number" value={singleDigitPrice} onChange={e => setSingleDigitPrice(e.target.value)} placeholder="e.g. 10.4" min="0.01" step="0.01"
                 className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition-colors" />
             </div>
-            <div className="md:col-span-2 lg:col-span-5 flex flex-col gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Double Digit Price (₹)</label>
+              <input type="number" value={doubleDigitPrice} onChange={e => setDoubleDigitPrice(e.target.value)} placeholder="e.g. 12" min="0.01" step="0.01"
+                className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition-colors" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Triple Digit Price (₹)</label>
+              <input type="number" value={tripleDigitPrice} onChange={e => setTripleDigitPrice(e.target.value)} placeholder="e.g. 30" min="0.01" step="0.01"
+                className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition-colors" />
+            </div>
+            <div className="md:col-span-2 lg:col-span-4 flex flex-col gap-4">
               {/* Banner Upload */}
               <div>
                 <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Draw Banner Image (1920×1080)</label>
@@ -435,16 +431,18 @@ export default function ManageAbcGame() {
                 <th className="px-6 py-4">Game</th>
                 <th className="px-6 py-4">Time Slot</th>
                 <th className="px-6 py-4">Scheduled At</th>
-                <th className="px-6 py-4">Price</th>
+                <th className="px-6 py-4">Single (₹)</th>
+                <th className="px-6 py-4">Double (₹)</th>
+                <th className="px-6 py-4">Triple (₹)</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#334155]">
               {loadingDraws ? (
-                <tr><td colSpan="7" className="text-center py-10 text-slate-500">Loading draws...</td></tr>
+                <tr><td colSpan="9" className="text-center py-10 text-slate-500">Loading draws...</td></tr>
               ) : draws.length === 0 ? (
-                <tr><td colSpan="7" className="text-center py-10 text-slate-500">No ABC draws found. Create one above.</td></tr>
+                <tr><td colSpan="9" className="text-center py-10 text-slate-500">No ABC draws found. Create one above.</td></tr>
               ) : draws.map(draw => (
                 <tr key={draw.id} className="hover:bg-slate-800/40 transition-colors">
                   {/* <td className="px-4 py-3">
@@ -475,7 +473,13 @@ export default function ManageAbcGame() {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="font-mono font-bold text-emerald-400">₹{parseFloat(draw.ticket_price).toFixed(2)}</span>
+                    <span className="font-mono font-bold text-sky-400">₹{draw.single_digit_price ? parseFloat(draw.single_digit_price).toFixed(2) : '—'}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="font-mono font-bold text-amber-400">₹{draw.double_digit_price ? parseFloat(draw.double_digit_price).toFixed(2) : '—'}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="font-mono font-bold text-emerald-400">₹{draw.triple_digit_price ? parseFloat(draw.triple_digit_price).toFixed(2) : '—'}</span>
                   </td>
                   <td className="px-6 py-4">
                     <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${STATUS_COLORS[draw.status]}`}>

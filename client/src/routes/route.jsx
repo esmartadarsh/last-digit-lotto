@@ -109,13 +109,9 @@ export default function AppRoutes() {
                         <Route path="profile" element={
                             <RequireAuth><Profile /></RequireAuth>
                         } />
-                        <Route path="abc-ticket/:game" element={
-                            <RequireAuth><BuyAbcTicket /></RequireAuth>
-                        } />
-
-                        <Route path="lottery-ticket/:game" element={
-                            <RequireAuth><BuyLotteryTicket /></RequireAuth>
-                        } />
+                        {/* No auth required to browse — login is only enforced at purchase time */}
+                        <Route path="abc-ticket/:game" element={<BuyAbcTicket />} />
+                        <Route path="lottery-ticket/:game" element={<BuyLotteryTicket />} />
                     </Route>
 
                     {/* Admin */}

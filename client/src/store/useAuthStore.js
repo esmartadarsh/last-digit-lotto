@@ -128,8 +128,6 @@ const useAuthStore = create((set, get) => ({
       const appVerifier = window.recaptchaVerifier;
 
       await appVerifier.verify();
-      console.log(auth, phoneNumber, appVerifier, 'see this')
-
 
       const confirmationResult = await signInWithPhoneNumber(
         auth,

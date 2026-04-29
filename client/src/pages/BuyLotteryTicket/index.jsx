@@ -63,9 +63,9 @@ export default function BuyLotteryTicket() {
         setLoading(true);
         const res = await axios.get(`${API_BASE_URL}/games/${game}`);
         if (res.data.success && res.data.game.draws.length > 0) {
-           const draw = res.data.game.draws[0];
-           setActiveDraw(draw);
-           setSelectedDate(draw.scheduled_at.split('T')[0]);
+          const draw = res.data.game.draws[0];
+          setActiveDraw(draw);
+          setSelectedDate(draw.scheduled_at.split('T')[0]);
         }
       } catch (err) {
         toast.error("Failed to load game details.");
@@ -152,55 +152,61 @@ export default function BuyLotteryTicket() {
   const clearCart = () => setCartItems([]);
 
   const handlePurchase = async () => {
+    // Auth gate — browsing is open, but payment requires login
+    if (!user || !token) {
+      toast.error("Please log in to purchase tickets");
+      navigate('/login', { state: { from: `/lottery-ticket/${game}` } });
+      return;
+    }
     if (!activeDraw) return toast.error("No active draw available");
     if (cartItems.length === 0) return toast.error("Cart is empty");
     if (user.balance < totalCost) return toast.error("Insufficient balance!");
 
     // Map cart items into the format the backend expects
     const payloadTickets = cartItems.map(item => {
-        if (item.kind === 'ticket') {
-            return { ticketNumber: item.id, kind: 'ticket' };
-        } else {
-            // Unroll sameSet logic is NOT needed here because the backend handles expanding them if needed,
-            // oh wait, my backend expects 8 char ticket numbers for ALL tickets.
-            // Let's generate the first 4 chars here and let backend save the full 8 chars.
-            // Actually, backend needs the FULL 10 tickets explicitly sent from the client.
-            const fullSet = [];
-            for (let i = 0; i < 10; i++) {
-                fullSet.push({
-                   ticketNumber: generateTicketId().substring(0, 4) + item.last4,
-                   kind: 'sameSet',
-                   last4: item.last4
-                });
-            }
-            return fullSet;
+      if (item.kind === 'ticket') {
+        return { ticketNumber: item.id, kind: 'ticket' };
+      } else {
+        // Unroll sameSet logic is NOT needed here because the backend handles expanding them if needed,
+        // oh wait, my backend expects 8 char ticket numbers for ALL tickets.
+        // Let's generate the first 4 chars here and let backend save the full 8 chars.
+        // Actually, backend needs the FULL 10 tickets explicitly sent from the client.
+        const fullSet = [];
+        for (let i = 0; i < 10; i++) {
+          fullSet.push({
+            ticketNumber: generateTicketId().substring(0, 4) + item.last4,
+            kind: 'sameSet',
+            last4: item.last4
+          });
         }
+        return fullSet;
+      }
     }).flat();
 
     try {
-        setIsPurchasing(true);
-        const res = await axios.post(`${API_BASE_URL}/lottery-tickets/purchase`, {
-            drawId: activeDraw.id,
-            tickets: payloadTickets
-        }, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
+      setIsPurchasing(true);
+      const res = await axios.post(`${API_BASE_URL}/lottery-tickets/purchase`, {
+        drawId: activeDraw.id,
+        tickets: payloadTickets
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
-        if (res.data.success) {
-            toast.success("Tickets purchased successfully!");
-            clearCart();
-            refreshProfile(); // update balance
-            navigate('/tickets');
-        }
+      if (res.data.success) {
+        toast.success("Tickets purchased successfully!");
+        clearCart();
+        refreshProfile(); // update balance
+        navigate('/tickets');
+      }
     } catch (err) {
-        toast.error(err.response?.data?.message || "Purchase failed");
+      toast.error(err.response?.data?.message || "Purchase failed");
     } finally {
-        setIsPurchasing(false);
+      setIsPurchasing(false);
     }
   };
 
   if (loading) {
-     return <div className="min-h-screen flex items-center justify-center bg-[#f0f2f8]">Loading...</div>;
+    return <div className="min-h-screen flex items-center justify-center bg-[#f0f2f8]">Loading...</div>;
   }
 
   return (
@@ -212,7 +218,7 @@ export default function BuyLotteryTicket() {
 
       <DrawBanner
         username={user?.name || "Player"}
-        drawNumber={`NO.${activeDraw?.id.substring(0,8)}`}
+        drawNumber={`NO.${activeDraw?.id.substring(0, 8)}`}
         drawTime={activeDraw ? new Date(activeDraw.scheduled_at).toLocaleString('en-GB') : "N/A"}
         bannerUrl={activeDraw?.banner_url}
       />
@@ -251,12 +257,12 @@ export default function BuyLotteryTicket() {
 
       {activeTab === "history" && <ResultsSection data={recentResults} />}
 
-      <BottomBar 
-         ticketsCount={totalTickets} 
-         totalCost={totalCost}
-         balance={user ? parseFloat(user.balance) : 0}
-         onPurchase={handlePurchase}
-         isPurchasing={isPurchasing}
+      <BottomBar
+        ticketsCount={totalTickets}
+        totalCost={totalCost}
+        balance={user ? parseFloat(user.balance) : 0}
+        onPurchase={handlePurchase}
+        isPurchasing={isPurchasing}
       />
     </div>
   );

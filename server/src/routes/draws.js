@@ -29,7 +29,7 @@ router.get('/:drawId', async (req, res) => {
       include: [
         { model: Game, as: 'game' },
         { model: LotteryResult, as: 'lotteryResult', required: false },
-        { model: AbcResult,     as: 'abcResult',     required: false },
+        { model: AbcResult, as: 'abcResult', required: false },
       ],
     });
 

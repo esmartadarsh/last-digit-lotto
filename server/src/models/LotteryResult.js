@@ -24,10 +24,11 @@ const LotteryResult = sequelize.define('LotteryResult', {
     type: DataTypes.STRING(500),
     allowNull: true,
   },
-  // users.id of the admin who announced this
+  // admin id (from admins table) who announced this — nullable because admins
+  // are stored in a separate table and cannot satisfy the FK to users.id
   announced_by: {
     type: DataTypes.CHAR(36),
-    allowNull: false,
+    allowNull: true,
   },
   announced_at: {
     type: DataTypes.DATE,

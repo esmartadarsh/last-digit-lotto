@@ -60,13 +60,16 @@ async function resolveAbcDraw(drawId, result, adminUserId) {
     await draw.update({ status: 'processing' }, { transaction: t });
 
     // Save result
+    // NOTE: announced_by is null because the announcer is an Admin (admins table),
+    // not a User (users table). The FK on abc_results.announced_by → users.id
+    // would fail if we passed an admin's UUID.
     await AbcResult.create(
       {
         draw_id: drawId,
         a: result.a,
         b: result.b,
         c: result.c,
-        announced_by: adminUserId,
+        announced_by: null,
       },
       { transaction: t }
     );
