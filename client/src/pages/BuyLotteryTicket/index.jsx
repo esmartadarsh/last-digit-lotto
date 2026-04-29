@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import axios from "axios";
+import formatTime from "@/utils/formatTime";
 import toast from "react-hot-toast";
 import useAuthStore from "../../store/useAuthStore";
-import formatTime from "@/utils/formatTime";
-
+import api from "../../config/api";
 import Header from "./components/Header.jsx";
 import DrawBanner from "./components/DrawBanner";
 import JackpotNumbers from "./components/JackpotNumbers";
@@ -18,7 +17,6 @@ import {
   validateCustomTicket,
 } from "../../utils/ticketGenerator";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 /* ── Static Data ── */
 const JACKPOT_BALLS = ["8", "8", "C", "2", "0", "6", "6", "2"];
@@ -61,7 +59,7 @@ export default function BuyLotteryTicket() {
     const fetchGameAndDraw = async () => {
       try {
         setLoading(true);
-        const res = await axios.get(`${API_BASE_URL}/games/${game}`);
+        const res = await api.get(`/games/${game}`);
         if (res.data.success && res.data.game.draws.length > 0) {
           const draw = res.data.game.draws[0];
           setActiveDraw(draw);
@@ -78,8 +76,8 @@ export default function BuyLotteryTicket() {
 
   useEffect(() => {
     if (activeTab === "history" && recentResults.length === 0) {
-      axios
-        .get(`${API_BASE_URL}/results/lottery/recent?game=${game}`)
+      api
+        .get(`/results/lottery/recent?game=${game}`)
         .then((res) => {
           if (res.data.success) {
             setRecentResults(res.data.results);
@@ -185,11 +183,9 @@ export default function BuyLotteryTicket() {
 
     try {
       setIsPurchasing(true);
-      const res = await axios.post(`${API_BASE_URL}/lottery-tickets/purchase`, {
+      const res = await api.post(`/lottery-tickets/purchase`, {
         drawId: activeDraw.id,
         tickets: payloadTickets
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
 
       if (res.data.success) {

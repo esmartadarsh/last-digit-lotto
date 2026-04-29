@@ -1,11 +1,9 @@
 import { IoWalletOutline } from 'react-icons/io5';
 import { FiArrowDownLeft, FiArrowUpRight, FiTrendingUp } from 'react-icons/fi';
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import useAuthStore from '../store/useAuthStore';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import api from '../config/api';
 
 export default function Balance() {
   const { user, token, refreshProfile } = useAuthStore();
@@ -28,9 +26,7 @@ export default function Balance() {
     const fetchHistory = async () => {
       if (!token) return;
       try {
-        const res = await axios.get(`${API_BASE_URL}/wallet/transactions?limit=20`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await api.get('/wallet/transactions?limit=20');
         if (res.data.success) {
           setTransactions(res.data.transactions);
         }
@@ -51,9 +47,7 @@ export default function Balance() {
     }
 
     try {
-      const { data } = await axios.post(`${API_BASE_URL}/wallet/deposit`, { amount: Number(amount) }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const { data } = await api.post('/wallet/deposit', { amount: Number(amount) });
 
       if (!data.success) throw new Error(data.message);
 

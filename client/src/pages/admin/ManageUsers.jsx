@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../store/useAuthStore';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import api from '../../config/api';
 
 export default function ManageUsers() {
   const { token } = useAuthStore();
@@ -16,9 +14,7 @@ export default function ManageUsers() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_BASE_URL}/admin/users`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get(`/admin/users`);
       if (res.data.success) {
         setUsers(res.data.users);
       }
@@ -41,11 +37,9 @@ export default function ManageUsers() {
 
     try {
       toast.loading("Adjusting balance...", { id: 'adj' });
-      const res = await axios.put(`${API_BASE_URL}/admin/users/${userId}/balance`, {
+      const res = await api.put(`/admin/users/${userId}/balance`, {
         amount,
         reason: 'Manual adjustment via Admin Panel'
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
       toast.success("Balance updated!", { id: 'adj' });
       fetchUsers();

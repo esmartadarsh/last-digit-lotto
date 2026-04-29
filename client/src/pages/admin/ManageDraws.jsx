@@ -1,9 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../store/useAuthStore';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import api from '../../config/api';
 
 // Format metadata for each of the 8 lottery ticket boxes
 const BOX_META = [
@@ -36,9 +34,7 @@ export default function ManageDraws() {
   const fetchDraws = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_BASE_URL}/admin/draws`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get(`/admin/draws`);
       if (res.data.success) setDraws(res.data.draws);
     } catch (err) {
       toast.error("Failed to fetch draws");
@@ -87,9 +83,7 @@ export default function ManageDraws() {
     if (!window.confirm("Are you sure you want to manually close this draw?")) return;
     try {
       toast.loading("Closing draw...", { id: 'close' });
-      const res = await axios.put(`${API_BASE_URL}/admin/draws/${drawId}/close`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.put(`/admin/draws/${drawId}/close`);
       toast.success(res.data.message || 'Draw closed', { id: 'close' });
       fetchDraws();
     } catch (err) {
@@ -105,9 +99,8 @@ export default function ManageDraws() {
       if (winningNumber.length !== 8) return toast.error("All 8 boxes must be filled");
       try {
         toast.loading("Processing winners & payouts...", { id: 'resolve' });
-        const res = await axios.post(`${API_BASE_URL}/admin/results/lottery`,
-          { drawId: selectedDraw.id, winningNumber },
-          { headers: { Authorization: `Bearer ${token}` } }
+        const res = await api.post(`/admin/results/lottery`,
+          { drawId: selectedDraw.id, winningNumber }
         );
         toast.success(res.data.message || 'Result announced!', { id: 'resolve' });
         closeModal(); fetchDraws();
@@ -119,9 +112,8 @@ export default function ManageDraws() {
       if ([a, b, c].some(d => isNaN(d) || d < 0 || d > 9)) return toast.error('A, B, C must each be a single digit (0–9)');
       try {
         toast.loading("Processing winners & payouts...", { id: 'resolve' });
-        const res = await axios.post(`${API_BASE_URL}/admin/results/abc`,
-          { drawId: selectedDraw.id, a, b, c },
-          { headers: { Authorization: `Bearer ${token}` } }
+        const res = await api.post(`/admin/results/abc`,
+          { drawId: selectedDraw.id, a, b, c }
         );
         toast.success(res.data.message || 'Result announced!', { id: 'resolve' });
         closeModal(); fetchDraws();

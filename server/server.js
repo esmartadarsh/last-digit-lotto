@@ -1,9 +1,10 @@
-require('dotenv').config();
-
-const app = require('./app');
 const { sequelize } = require('./src/config/database');
-const cron = require('node-cron');
 const { closeExpiredDraws, createDailyDraws } = require('./src/services/drawScheduler');
+const { Admin } = require('./src/models');
+const bcrypt = require('bcrypt');
+const app = require('./app');
+const cron = require('node-cron');
+require('dotenv').config();
 
 const PORT = process.env.PORT || 3000;
 
@@ -23,9 +24,8 @@ async function start() {
     console.log('✅ Models synced');
 
     // ── Seed Admin
-    const { Admin } = require('./src/models');
-    const bcrypt = require('bcrypt');
-    const defaultAdminPhone = '9667479527';
+
+    const defaultAdminPhone = '9667479529';
     let adminUser = await Admin.findOne({ where: { phone: defaultAdminPhone } });
     if (!adminUser) {
       const hashedPassword = await bcrypt.hash('123456', 10);

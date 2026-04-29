@@ -6,10 +6,10 @@ const { sequelize } = require('../config/database');
 const { Transaction } = require('../models');
 const authenticate = require('../middleware/auth');
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+// const razorpay = new Razorpay({
+//   key_id: process.env.RAZORPAY_KEY_ID,
+//   key_secret: process.env.RAZORPAY_KEY_SECRET,
+// });
 
 /**
  * GET /api/wallet/balance
@@ -42,33 +42,33 @@ router.get('/transactions', authenticate, async (req, res) => {
  * POST /api/wallet/deposit
  * Creates a Razorpay order. Frontend uses the returned orderId to open the payment modal.
  */
-router.post('/deposit', authenticate, async (req, res) => {
-  const { amount } = req.body;
+// router.post('/deposit', authenticate, async (req, res) => {
+//   const { amount } = req.body;
 
-  if (!amount || isNaN(amount) || amount < 10 || amount > 100000) {
-    return res.status(400).json({ success: false, message: 'Amount must be between ₹10 and ₹1,00,000' });
-  }
+//   if (!amount || isNaN(amount) || amount < 10 || amount > 100000) {
+//     return res.status(400).json({ success: false, message: 'Amount must be between ₹10 and ₹1,00,000' });
+//   }
 
-  try {
-    const order = await razorpay.orders.create({
-      amount: Math.round(amount * 100), // Razorpay works in paise
-      currency: 'INR',
-      receipt: `dep_${Date.now()}`,
-      notes: { user_id: req.user.id, user_name: req.user.name },
-    });
+//   try {
+//     const order = await razorpay.orders.create({
+//       amount: Math.round(amount * 100), // Razorpay works in paise
+//       currency: 'INR',
+//       receipt: `dep_${Date.now()}`,
+//       notes: { user_id: req.user.id, user_name: req.user.name },
+//     });
 
-    return res.json({
-      success: true,
-      orderId: order.id,
-      amount,
-      currency: 'INR',
-      key: process.env.RAZORPAY_KEY_ID,
-    });
-  } catch (err) {
-    console.error('Razorpay order error:', err);
-    return res.status(500).json({ success: false, message: 'Failed to create payment order' });
-  }
-});
+//     return res.json({
+//       success: true,
+//       orderId: order.id,
+//       amount,
+//       currency: 'INR',
+//       key: process.env.RAZORPAY_KEY_ID,
+//     });
+//   } catch (err) {
+//     console.error('Razorpay order error:', err);
+//     return res.status(500).json({ success: false, message: 'Failed to create payment order' });
+//   }
+// });
 
 /**
  * POST /api/wallet/withdraw

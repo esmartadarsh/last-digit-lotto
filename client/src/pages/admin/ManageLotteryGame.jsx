@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import { FiPlus, FiActivity, FiX, FiImage, FiTrash2 } from 'react-icons/fi';
 import useAuthStore from '../../store/useAuthStore';
 import ImageCropperModal from '../../components/ImageCropperModal';
 import { storage } from '../../config/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import api from '../../config/api';
 import { TIME_SLOTS } from '../../data.js'
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const STATUS_COLORS = {
   open: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
@@ -56,8 +55,7 @@ export default function ManageLotteryGame() {
   const fetchGames = async () => {
     try {
       setLoadingGames(true);
-      const res = await axios.get(`${API_BASE_URL}/admin/draws`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await api.get(`/admin/draws`, {
         params: { limit: 200 }
       });
       // Get all draws, extract unique lottery games from them
@@ -66,7 +64,7 @@ export default function ManageLotteryGame() {
       setDraws(lotteryDraws);
 
       // fetch game list separately
-      const gRes = await axios.get(`${API_BASE_URL}/games`);
+      const gRes = await api.get(`/games`);
       setGames((gRes.data.games || []).filter(g => g.type === 'lottery'));
     } catch (err) {
       toast.error('Failed to load data');
@@ -84,9 +82,8 @@ export default function ManageLotteryGame() {
     if (!gameName || !gameSlug) return toast.error('Name and slug are required');
     setCreatingGame(true);
     try {
-      await axios.post(`${API_BASE_URL}/admin/games`,
-        { name: gameName, slug: gameSlug.toLowerCase().replace(/\s+/g, '-'), type: 'lottery' },
-        { headers: { Authorization: `Bearer ${token}` } }
+      await api.post(`/admin/games`,
+        { name: gameName, slug: gameSlug.toLowerCase().replace(/\s+/g, '-'), type: 'lottery' }
       );
       toast.success(`Game "${gameName}" created!`);
       setGameName(''); setGameSlug('');
@@ -121,9 +118,8 @@ export default function ManageLotteryGame() {
         setUploadingBanner(false);
       }
 
-      await axios.post(`${API_BASE_URL}/admin/draws`,
-        { game_id: parseInt(selectedGameId), scheduled_at, ticket_price: parseFloat(ticketPrice), banner_url },
-        { headers: { Authorization: `Bearer ${token}` } }
+      await api.post(`/admin/draws`,
+        { game_id: parseInt(selectedGameId), scheduled_at, ticket_price: parseFloat(ticketPrice), banner_url }
       );
       toast.success('Draw created successfully!');
       setSelectedGameId(''); setDrawDate(''); setDrawHour(''); setTicketPrice('');
@@ -142,9 +138,7 @@ export default function ManageLotteryGame() {
   const handleCloseDraw = async (drawId) => {
     if (!window.confirm('Close this draw? Players will no longer be able to buy tickets.')) return;
     try {
-      await axios.put(`${API_BASE_URL}/admin/draws/${drawId}/close`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.put(`/admin/draws/${drawId}/close`);
       toast.success('Draw closed!');
       fetchGames();
     } catch (err) {
@@ -156,9 +150,7 @@ export default function ManageLotteryGame() {
   const handleDeleteDraw = async (drawId) => {
     if (!window.confirm('Are you sure you want to completely delete this draw? This cannot be undone.')) return;
     try {
-      await axios.delete(`${API_BASE_URL}/admin/draws/${drawId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.delete(`/admin/draws/${drawId}`);
       toast.success('Draw deleted!');
       fetchGames();
     } catch (err) {
@@ -170,9 +162,7 @@ export default function ManageLotteryGame() {
   // const handleToggleGame = async (gameId, currentStatus) => {
   //   if (!window.confirm(`Are you sure you want to make this game ${currentStatus ? 'inactive' : 'active'}?`)) return;
   //   try {
-  //     await axios.put(`${API_BASE_URL}/admin/games/${gameId}/toggle-active`, {}, {
-  //       headers: { Authorization: `Bearer ${token}` }
-  //     });
+  //     await api.put(`/admin/games/${gameId}/toggle-active`);
   //     toast.success(`Game marked as ${currentStatus ? 'inactive' : 'active'}!`);
   //     fetchGames();
   //   } catch (err) {
@@ -184,9 +174,7 @@ export default function ManageLotteryGame() {
   const handleDeleteGame = async (gameId) => {
     if (!window.confirm('Are you sure you want to delete this game? To delete a game, it must NOT have any active draws.')) return;
     try {
-      await axios.delete(`${API_BASE_URL}/admin/games/${gameId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.delete(`/admin/games/${gameId}`);
       toast.success('Game deleted successfully!');
       fetchGames();
     } catch (err) {
@@ -199,9 +187,8 @@ export default function ManageLotteryGame() {
     if (!winningNumber || winningNumber.length !== 8) return toast.error('Enter a valid 8-character winning number (e.g. 46A42171)');
     setResolving(true);
     try {
-      await axios.post(`${API_BASE_URL}/admin/results/lottery`,
-        { drawId: resolveDraw.id, winningNumber: winningNumber.toUpperCase() },
-        { headers: { Authorization: `Bearer ${token}` } }
+      await api.post(`/admin/results/lottery`,
+        { drawId: resolveDraw.id, winningNumber: winningNumber.toUpperCase() }
       );
       toast.success('Results announced & payouts processed!');
       setResolveDraw(null); setWinningNumber('');

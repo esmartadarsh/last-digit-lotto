@@ -1,16 +1,13 @@
 import ProfileImg from "@/assets/imgs/default-profile-img.png"
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import axios from "axios"
+import api from "../../config/api"
 import formatTime from "@/utils/formatTime"
 import useAuthStore from "../../store/useAuthStore"
-
 import QuickActions from "./components/QuickActions"
 import RecentWinners from "./components/RecentWinners"
 import Header from "./components/Header"
 import JackpotCard from "./components/JackpotCard"
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const RecentWinnersData = [
     { name: 'Rahul K.', won: '₹12,000', game: 'Lucky Spin', img: '12' },
@@ -46,7 +43,7 @@ export default function Home() {
     useEffect(() => {
         const fetchActiveDraws = async () => {
             try {
-                const res = await axios.get(`${API_BASE_URL}/draws/active`);
+                const res = await api.get('/draws/active');
                 if (res.data.success) {
                     const draws = res.data.draws;
 

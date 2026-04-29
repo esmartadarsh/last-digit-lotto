@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import axios from "axios"
+import api from "../config/api"
 import useAuthStore from "../store/useAuthStore"
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export default function MyTickets() {
   const navigate = useNavigate();
@@ -19,8 +17,8 @@ export default function MyTickets() {
         setLoading(true);
         // Fetch both concurrently
         const [lotteryRes, abcRes] = await Promise.all([
-          axios.get(`${API_BASE_URL}/lottery-tickets/me?limit=50`, { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get(`${API_BASE_URL}/abc-tickets/me?limit=50`, { headers: { Authorization: `Bearer ${token}` } })
+          api.get('/lottery-tickets/me?limit=50'),
+          api.get('/abc-tickets/me?limit=50')
         ]);
 
         const lottery = lotteryRes.data.success ? lotteryRes.data.tickets.map(t => ({

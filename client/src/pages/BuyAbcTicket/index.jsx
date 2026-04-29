@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import axios from "axios";
 import toast from "react-hot-toast";
 import useAuthStore from "../../store/useAuthStore";
+import api from "../../config/api";
 import Header from "./components/Header";
 import DrawBanner from "./components/DrawBanner";
 import TimeSelectorTabs from "./components/TimeSelectorTabs";
@@ -12,7 +12,6 @@ import HistoryTab from "./components/HistoryTab";
 import BottomBar from "./components/BottomBar";
 import HowToPlayModal from "./components/HowToPlayModal";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 /* ── Countdown hook ── */
 function useCountdown(targetDateStr) {
@@ -61,7 +60,7 @@ export default function BuyAbcTicket() {
         const fetchGameAndDraws = async () => {
             try {
                 setLoading(true);
-                const res = await axios.get(`${API_BASE_URL}/games/${game}`);
+                const res = await api.get(`/games/${game}`);
                 if (res.data.success && res.data.game.draws.length > 0) {
                     setApiDraws(res.data.game.draws);
                 }
@@ -76,7 +75,7 @@ export default function BuyAbcTicket() {
 
     useEffect(() => {
         if (activeTab === "history" && recentResults.length === 0) {
-            axios.get(`${API_BASE_URL}/results/abc/recent?game=${game}`)
+            api.get(`/results/abc/recent?game=${game}`)
                 .then(res => {
                     if (res.data.success) setRecentResults(res.data.results);
                 })
@@ -201,11 +200,9 @@ export default function BuyAbcTicket() {
 
         try {
             setIsPurchasing(true);
-            const res = await axios.post(`${API_BASE_URL}/abc-tickets/purchase`, {
+            const res = await api.post(`/abc-tickets/purchase`, {
                 drawId: activeDraw.id,
                 selections: payload
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
             });
 
             if (res.data.success) {

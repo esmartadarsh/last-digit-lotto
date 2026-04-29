@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { FiUsers, FiCreditCard, FiClock, FiActivity } from 'react-icons/fi';
 import useAuthStore from '../../store/useAuthStore';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import api from '../../config/api';
 
 export default function AdminDashboard() {
   const { token } = useAuthStore();
@@ -20,8 +18,8 @@ export default function AdminDashboard() {
     const fetchDashboardStats = async () => {
       try {
         const [usersRes, drawsRes] = await Promise.all([
-          axios.get(`${API_BASE_URL}/admin/users`, { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get(`${API_BASE_URL}/admin/draws`, { headers: { Authorization: `Bearer ${token}` } }),
+          api.get(`/admin/users`),
+          api.get(`/admin/draws`),
         ]);
 
         const usersCount = usersRes.data.success ? usersRes.data.total : 0;

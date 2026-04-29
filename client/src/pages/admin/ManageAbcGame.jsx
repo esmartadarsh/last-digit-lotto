@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import { FiPlus, FiActivity, FiX, FiImage, FiTrash2 } from 'react-icons/fi';
 import useAuthStore from '../../store/useAuthStore';
 import ImageCropperModal from '../../components/ImageCropperModal';
 import { storage } from '../../config/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { TIME_SLOTS } from '../../data.js'
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import { TIME_SLOTS } from '../../data.js';
+import api from '../../config/api';
 
 const STATUS_COLORS = {
   open: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
@@ -59,11 +57,10 @@ export default function ManageAbcGame() {
     try {
       setLoadingDraws(true);
       const [drawsRes, gamesRes] = await Promise.all([
-        axios.get(`${API_BASE_URL}/admin/draws`, {
-          headers: { Authorization: `Bearer ${token}` },
+        api.get(`/admin/draws`, {
           params: { limit: 200 }
         }),
-        axios.get(`${API_BASE_URL}/games`)
+        api.get(`/games`)
       ]);
 
       const allDraws = drawsRes.data.draws || [];
@@ -84,9 +81,8 @@ export default function ManageAbcGame() {
     if (!gameName || !gameSlug) return toast.error('Name and slug are required');
     setCreatingGame(true);
     try {
-      await axios.post(`${API_BASE_URL}/admin/games`,
-        { name: gameName, slug: gameSlug.toLowerCase().replace(/\s+/g, '-'), type: 'abc' },
-        { headers: { Authorization: `Bearer ${token}` } }
+      await api.post(`/admin/games`,
+        { name: gameName, slug: gameSlug.toLowerCase().replace(/\s+/g, '-'), type: 'abc' }
       );
       toast.success(`Game "${gameName}" created!`);
       setGameName(''); setGameSlug('');
@@ -123,7 +119,7 @@ export default function ManageAbcGame() {
         setUploadingBanner(false);
       }
 
-      await axios.post(`${API_BASE_URL}/admin/draws`,
+      await api.post(`/admin/draws`,
         {
           game_id: parseInt(selectedGameId),
           scheduled_at,
@@ -132,8 +128,7 @@ export default function ManageAbcGame() {
           triple_digit_price: parseFloat(tripleDigitPrice),
           time_slot: derivedSlot,
           banner_url,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
+        }
       );
       toast.success('Draw created successfully!');
       setSelectedGameId(''); setDrawDate(''); setDrawHour('');
@@ -153,9 +148,7 @@ export default function ManageAbcGame() {
   const handleCloseDraw = async (drawId) => {
     if (!window.confirm('Close this draw? Players will no longer be able to buy tickets.')) return;
     try {
-      await axios.put(`${API_BASE_URL}/admin/draws/${drawId}/close`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.put(`/admin/draws/${drawId}/close`);
       toast.success('Draw closed!');
       fetchData();
     } catch (err) {
@@ -167,9 +160,7 @@ export default function ManageAbcGame() {
   const handleDeleteDraw = async (drawId) => {
     if (!window.confirm('Are you sure you want to completely delete this draw? This cannot be undone.')) return;
     try {
-      await axios.delete(`${API_BASE_URL}/admin/draws/${drawId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.delete(`/admin/draws/${drawId}`);
       toast.success('Draw deleted!');
       fetchData();
     } catch (err) {
@@ -181,9 +172,7 @@ export default function ManageAbcGame() {
   // const handleToggleGame = async (gameId, currentStatus) => {
   //   if (!window.confirm(`Are you sure you want to make this game ${currentStatus ? 'inactive' : 'active'}?`)) return;
   //   try {
-  //     await axios.put(`${API_BASE_URL}/admin/games/${gameId}/toggle-active`, {}, {
-  //       headers: { Authorization: `Bearer ${token}` }
-  //     });
+  //     await api.put(`/admin/games/${gameId}/toggle-active`);
   //     toast.success(`Game marked as ${currentStatus ? 'inactive' : 'active'}!`);
   //     fetchData();
   //   } catch (err) {
@@ -195,9 +184,7 @@ export default function ManageAbcGame() {
   const handleDeleteGame = async (gameId) => {
     if (!window.confirm('Are you sure you want to delete this game? To delete a game, it must NOT have any active draws.')) return;
     try {
-      await axios.delete(`${API_BASE_URL}/admin/games/${gameId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.delete(`/admin/games/${gameId}`);
       toast.success('Game deleted successfully!');
       fetchData();
     } catch (err) {
@@ -217,9 +204,8 @@ export default function ManageAbcGame() {
 
     setResolving(true);
     try {
-      await axios.post(`${API_BASE_URL}/admin/results/abc`,
-        { drawId: resolveDraw.id, a, b, c },
-        { headers: { Authorization: `Bearer ${token}` } }
+      await api.post(`/admin/results/abc`,
+        { drawId: resolveDraw.id, a, b, c }
       );
       toast.success('ABC results announced & payouts processed!');
       setResolveDraw(null); setDigitA(''); setDigitB(''); setDigitC('');

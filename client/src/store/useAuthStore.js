@@ -1,9 +1,7 @@
 import { create } from 'zustand';
-import axios from 'axios';
 import { auth, googleProvider, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber } from '../config/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import api from '../config/api';
 
 export const setupRecaptcha = async (auth) => {
   if (!window.recaptchaVerifier) {
@@ -36,9 +34,7 @@ const useAuthStore = create((set, get) => ({
 
     if (adminToken) {
       try {
-        const res = await axios.get(`${API_BASE_URL}/auth/admin/me`, {
-          headers: { Authorization: `Bearer ${adminToken}` }
-        });
+        const res = await api.get('/auth/admin/me');
 
         set({
           user: res.data.user,
@@ -62,7 +58,7 @@ const useAuthStore = create((set, get) => ({
         try {
           const token = await firebaseUser.getIdToken();
           // Sync with our backend to get the full profile (balance, role, etc)
-          const response = await axios.post(`${API_BASE_URL}/auth/sync`, {}, {
+          const response = await api.post('/auth/sync', {}, {
             headers: { Authorization: `Bearer ${token}` }
           });
 
@@ -88,7 +84,7 @@ const useAuthStore = create((set, get) => ({
   loginAdminWithPassword: async (phone, password) => {
     try {
       set({ isLoading: true, error: null });
-      const res = await axios.post(`${API_BASE_URL}/auth/admin/login`, { phone, password });
+      const res = await api.post('/auth/admin/login', { phone, password });
 
       const { token, user } = res.data;
       localStorage.setItem('admin_token', token);
@@ -185,9 +181,7 @@ const useAuthStore = create((set, get) => ({
     const { token } = get();
     if (!token) return;
     try {
-      const resp = await axios.get(`${API_BASE_URL}/users/me`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const resp = await api.get('/users/me');
       set({ user: resp.data.user });
     } catch (err) {
       console.error("Failed to refresh profile:", err);
