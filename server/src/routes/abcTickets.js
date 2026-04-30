@@ -109,31 +109,20 @@ router.post(
         }
 
         // 4. Lock + balance check
-        const user = await req.user.reload({ lock: t.LOCK.UPDATE, transaction: t });
-        if (parseFloat(user.balance) < totalCost) {
-          throw Object.assign(new Error('Insufficient balance'), { status: 400 });
-        }
+        // TODO: restore balance check + deduction once Razorpay top-up is wired
+        // const user = await req.user.reload({ lock: t.LOCK.UPDATE, transaction: t });
+        // if (parseFloat(user.balance) < totalCost) {
+        //   throw Object.assign(new Error('Insufficient balance'), { status: 400 });
+        // }
 
-        // 5. Create tickets + deduct balance
+        // 5. Create tickets (balance deduction skipped until Razorpay is wired)
         await AbcTicket.bulkCreate(ticketRows, { transaction: t });
 
-        const balanceBefore = parseFloat(user.balance);
-        const balanceAfter = balanceBefore - totalCost;
-        await user.update({ balance: balanceAfter }, { transaction: t });
-
-        await Transaction.create(
-          {
-            user_id: userId,
-            type: 'bet_abc',
-            amount: -totalCost,
-            balance_before: balanceBefore,
-            balance_after: balanceAfter,
-            reference_id: drawId,
-            reference_type: 'draw',
-            description: `Purchased ${selections.length} ABC selection(s)`,
-          },
-          { transaction: t }
-        );
+        // TODO: restore balance deduction + transaction log once Razorpay top-up is wired
+        // const balanceBefore = parseFloat(user.balance);
+        // const balanceAfter = balanceBefore - totalCost;
+        // await user.update({ balance: balanceAfter }, { transaction: t });
+        // await Transaction.create({ ... }, { transaction: t });
       });
 
       return res.json({

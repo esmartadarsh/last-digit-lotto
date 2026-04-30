@@ -158,7 +158,8 @@ export default function BuyLotteryTicket() {
     }
     if (!activeDraw) return toast.error("No active draw available");
     if (cartItems.length === 0) return toast.error("Cart is empty");
-    if (user.balance < totalCost) return toast.error("Insufficient balance!");
+    // TODO: re-enable balance check once Razorpay top-up is wired
+    // if (parseFloat(user.balance) < totalCost) return toast.error("Insufficient balance!");
 
     // Map cart items into the format the backend expects
     const payloadTickets = cartItems.map(item => {

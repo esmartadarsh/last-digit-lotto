@@ -98,11 +98,12 @@ export default function Home() {
                         {lotteryDraws.map((draw) => (
                             <div
                                 key={draw.id}
-                                className="relative overflow-hidden rounded-2xl cursor-pointer active:scale-95 transition-all h-32 bg-gray-200"
+                                className="relative overflow-hidden rounded-2xl cursor-pointer active:scale-95 transition-all bg-gray-200"
+                                style={{ aspectRatio: '16/9' }}
                                 onClick={() => navigate(`/lottery-ticket/${draw.game.slug}`)}
                             >
                                 {draw.banner_url || draw.game.banner_url ? (
-                                    <img src={draw.banner_url || draw.game.banner_url} alt={draw.game.name} loading="lazy" className="w-full h-full " />
+                                    <img src={draw.banner_url || draw.game.banner_url} alt={draw.game.name} loading="lazy" className="w-full h-full object-cover" />
                                 ) : (
                                     <div className="w-full h-full bg-gradient-to-br from-red-500 to-pink-600 flex items-center justify-center p-2 text-center text-white font-bold">
                                         {draw.game.name}
@@ -139,11 +140,12 @@ export default function Home() {
                         {abcDraws.map((draw) => (
                             <div
                                 key={draw.id}
-                                className="relative overflow-hidden rounded-2xl cursor-pointer active:scale-95 transition-all h-32 bg-gray-200"
+                                className="relative overflow-hidden rounded-2xl cursor-pointer active:scale-95 transition-all bg-gray-200"
+                                style={{ aspectRatio: '16/9' }}
                                 onClick={() => navigate(`/abc-ticket/${draw.game.slug}`)}
                             >
                                 {draw.banner_url || draw.game.banner_url ? (
-                                    <img src={draw.banner_url || draw.game.banner_url} alt={draw.game.name} loading="lazy" className="w-full h-full" />
+                                    <img src={draw.banner_url || draw.game.banner_url} alt={draw.game.name} loading="lazy" className="w-full h-full object-cover" />
                                 ) : (
                                     <div className="w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center p-2 text-center text-white font-bold">
                                         {draw.game.name}

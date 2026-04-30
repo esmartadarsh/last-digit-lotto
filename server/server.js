@@ -28,10 +28,9 @@ async function start() {
     const defaultAdminPhone = '9667479529';
     let adminUser = await Admin.findOne({ where: { phone: defaultAdminPhone } });
     if (!adminUser) {
-      const hashedPassword = await bcrypt.hash('123456', 10);
       await Admin.create({
         phone: defaultAdminPhone,
-        password: hashedPassword,
+        password: '123456',
         name: 'Super Admin',
         role: 'superadmin'
       });

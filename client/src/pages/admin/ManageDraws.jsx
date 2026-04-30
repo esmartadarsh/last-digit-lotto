@@ -125,12 +125,12 @@ export default function ManageDraws() {
 
   return (
     <div className="space-y-6 flex flex-col max-w-[1200px] w-full mx-auto">
-      <div className="flex justify-between items-center mb-4">
+      {/* <div className="flex justify-between items-center mb-4">
         <h1 className="text-3xl font-bold tracking-tight text-white">Manage Draws</h1>
         <button className="bg-red-600 hover:bg-red-500 text-white px-5 py-2.5 rounded-lg font-semibold transition-colors shadow-lg shadow-red-500/20">
           + Create Draw (Auto)
         </button>
-      </div>
+      </div> */}
 
       <div className="bg-[#1e293b]/80 backdrop-blur border border-[#334155] rounded-2xl shadow-xl overflow-hidden">
         <table className="w-full text-left text-sm text-slate-300">

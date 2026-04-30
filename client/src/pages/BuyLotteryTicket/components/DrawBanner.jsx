@@ -48,4 +48,4 @@ export default function DrawBanner({ username = "Somu Singh", drawNumber = "NO.0
             </div>
         </div>
     );
-}
+}

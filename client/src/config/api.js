@@ -1,11 +1,11 @@
 import axios from 'axios';
+import { getToken } from './tokenStore';
 
 /**
  * Pre-configured axios instance.
  * - baseURL is set from the env variable once here.
  * - A request interceptor automatically attaches the Bearer token
- *   from localStorage (admin_token) or from the Zustand store,
- *   so no file needs to pass Authorization headers manually.
+ *   from localStorage (admin_token) or from tokenStore (Firebase user token).
  */
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
@@ -20,19 +20,14 @@ api.interceptors.request.use((config) => {
     return config;
   }
 
-  // Fall back to Zustand store token (Firebase user token)
-  // We import the store lazily to avoid circular-dependency issues
-  try {
-    const { default: useAuthStore } = require('../store/useAuthStore');
-    const token = useAuthStore.getState().token;
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-  } catch (_) {
-    // store not yet initialized — proceed without token
+  // Firebase user token — read from the shared tokenStore (no circular dep)
+  const token = getToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
 
   return config;
 });
 
 export default api;
+

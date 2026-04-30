@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { auth, googleProvider, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber } from '../config/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import api from '../config/api';
+import { setToken } from '../config/tokenStore';
 
 export const setupRecaptcha = async (auth) => {
   if (!window.recaptchaVerifier) {
@@ -36,6 +37,7 @@ const useAuthStore = create((set, get) => ({
       try {
         const res = await api.get('/auth/admin/me');
 
+        setToken(adminToken); // restore tokenStore on page reload
         set({
           user: res.data.user,
           token: adminToken,
@@ -62,6 +64,7 @@ const useAuthStore = create((set, get) => ({
             headers: { Authorization: `Bearer ${token}` }
           });
 
+          setToken(token); // keep tokenStore in sync
           set({
             fbUser: firebaseUser,
             token,
@@ -75,6 +78,7 @@ const useAuthStore = create((set, get) => ({
         }
       } else {
         // Logged out
+        setToken(null);
         set({ fbUser: null, token: null, user: null, isLoading: false });
       }
     });
@@ -89,6 +93,7 @@ const useAuthStore = create((set, get) => ({
       const { token, user } = res.data;
       localStorage.setItem('admin_token', token);
 
+      setToken(token); // keep tokenStore in sync
       set({
         user,
         token,
@@ -161,6 +166,7 @@ const useAuthStore = create((set, get) => ({
     try {
       // Clear admin token if present
       localStorage.removeItem('admin_token');
+      setToken(null); // clear tokenStore
 
       // Firebase logout (safe even if admin)
       await signOut(auth);

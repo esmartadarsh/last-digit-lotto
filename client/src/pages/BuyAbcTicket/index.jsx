@@ -173,7 +173,8 @@ export default function BuyAbcTicket() {
         }
         if (!activeDraw) return toast.error("No active draw available");
         if (selections.length === 0) return toast.error("Cart is empty");
-        if (user.balance < totalCost) return toast.error("Insufficient balance!");
+        // TODO: re-enable balance check once Razorpay top-up is wired
+        // if (parseFloat(user.balance) < totalCost) return toast.error("Insufficient balance!");
 
         // Map selections to API payload expects { type, position, digits, qty }
         const payload = selections.map(s => {

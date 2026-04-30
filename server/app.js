@@ -17,23 +17,29 @@ const userRoutes = require('./src/routes/users');
 
 const app = express();
 
-// ── Security & Logging
-app.use(helmet());
-app.use(morgan('dev'));
-
-
-// ── CORS
+// ── CORS (must be before helmet so its headers don't override CORS)
 app.use(cors({
   origin: [
     process.env.CLIENT_URL || 'http://localhost:5173',
     'capacitor://localhost',
     'http://localhost',
+    'http://localhost:5173',
     'http://127.0.0.1',
     'http://127.0.0.1:5173'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
 }));
+
+// ── Security & Logging
+// crossOriginResourcePolicy must be 'cross-origin' so the browser allows
+// cross-origin fetches (e.g. from localhost or a different domain in prod)
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  crossOriginOpenerPolicy: false,
+}));
+app.use(morgan('dev'));
 
 // ── Raw body for Razorpay webhook (must come before express.json)
 app.use('/api/webhooks', express.raw({ type: 'application/json' }));

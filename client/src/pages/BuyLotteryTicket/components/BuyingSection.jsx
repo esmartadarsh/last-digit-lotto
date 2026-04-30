@@ -141,7 +141,7 @@ function SameSetPanel({
                   {/* date — commented out, schedule date should not be shown to user */}
                   {/* <p className="text-green-200 font-bold text-[10px] text-center pb-2.5 px-2">
                     {formatCardDate(selectedDate)}
-                  </p> */
+                  </p> */}
                 </button>
               );
             })}
@@ -515,7 +515,7 @@ export default function BuyingSection({
             </button>
           ))}
         </div>
-      </div> */
+      </div> */}
 
       {/* 5 ── About Accordion ── */}
       <div
