@@ -26,7 +26,8 @@ app.use(cors({
     'http://localhost:5173',
     'http://127.0.0.1',
     'http://127.0.0.1:5173',
-    'https://lastdigitlotto.in/'
+    'https://lastdigitlotto.in',
+    'https://www.lastdigitlotto.in'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
