@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
-import { FiPlus, FiActivity, FiX, FiImage, FiTrash2 } from 'react-icons/fi';
+import { FiPlus, FiActivity, FiX, FiImage, FiTrash2, FiAward } from 'react-icons/fi';
 import useAuthStore from '../../store/useAuthStore';
 import ImageCropperModal from '../../components/ImageCropperModal';
 import { storage } from '../../config/firebase';
@@ -14,6 +14,39 @@ const STATUS_COLORS = {
   processing: 'bg-blue-500/10 text-blue-400 border border-blue-500/20',
   completed: 'bg-slate-700/50 text-slate-400 border border-slate-600',
 };
+
+// ── Prize configs ──
+const PRIZE_CONFIG = [
+  { key: 'second', label: '2nd Prize', digits: 5, count: 10, color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.25)' },
+  { key: 'third', label: '3rd Prize', digits: 4, count: 10, color: '#60a5fa', bg: 'rgba(96,165,250,0.08)', border: 'rgba(96,165,250,0.25)' },
+  { key: 'fourth', label: '4th Prize', digits: 4, count: 10, color: '#a78bfa', bg: 'rgba(167,139,250,0.08)', border: 'rgba(167,139,250,0.25)' },
+  { key: 'fifth', label: '5th Prize', digits: 4, count: 100, color: '#34d399', bg: 'rgba(52,211,153,0.08)', border: 'rgba(52,211,153,0.25)' },
+];
+
+// Parse pasted text into valid number chips of exact `digits` length
+function parsePastedNumbers(text, digits) {
+  const tokens = text.split(/[\s,\n\r\t]+/).map(t => t.trim()).filter(Boolean);
+  const valid = [];
+  for (const t of tokens) {
+    const cleaned = t.replace(/\D/g, '');
+    // Chunk into groups of `digits`
+    for (let i = 0; i + digits <= cleaned.length; i += digits) {
+      valid.push(cleaned.slice(i, i + digits));
+    }
+    // If it doesn't divide evenly but has >= digits chars, take first `digits`
+    if (cleaned.length >= digits && cleaned.length % digits !== 0) {
+      // already handled above via loop
+    }
+    // If token is shorter than digits, pad with zeros? No — skip it
+  }
+  return valid;
+}
+
+// 1st prize box metadata (N N L N N N N N)
+const BOX_META_1ST = [
+  { type: 'tel' }, { type: 'tel' }, { type: 'text' },
+  { type: 'tel' }, { type: 'tel' }, { type: 'tel' }, { type: 'tel' }, { type: 'tel' },
+];
 
 
 
@@ -46,10 +79,16 @@ export default function ManageLotteryGame() {
   const [bannerPreview, setBannerPreview] = useState(null);
   const [uploadingBanner, setUploadingBanner] = useState(false);
 
-  // Resolve Draw
+  // ── Resolve / Announce Result ──
   const [resolveDraw, setResolveDraw] = useState(null);
-  const [winningNumber, setWinningNumber] = useState('');
   const [resolving, setResolving] = useState(false);
+  // 1st prize — 8 individual boxes
+  const [firstBoxes, setFirstBoxes] = useState(Array(8).fill(''));
+  const firstRefs = useRef([]);
+  // Paste-based prizes  { second: [], third: [], fourth: [], fifth: [] }
+  const [prizeNumbers, setPrizeNumbers] = useState({ second: [], third: [], fourth: [], fifth: [] });
+  // Textarea draft values per prize
+  const [pasteDraft, setPasteDraft] = useState({ second: '', third: '', fourth: '', fifth: '' });
 
   // ── Fetchers ──
   const fetchGames = async () => {
@@ -182,19 +221,75 @@ export default function ManageLotteryGame() {
     }
   };
 
-  // ── Resolve Draw ──
-  const handleResolveDraw = async () => {
-    if (!winningNumber || winningNumber.length !== 8) return toast.error('Enter a valid 8-character winning number (e.g. 46A42171)');
+  // ── 1st prize box handlers ──
+  const handleFirstBoxChange = (idx, raw) => {
+    const isLetter = idx === 2;
+    const cleaned = isLetter
+      ? raw.replace(/[^A-Za-z]/g, '').toUpperCase().slice(-1)
+      : raw.replace(/\D/g, '').slice(-1);
+    const next = [...firstBoxes]; next[idx] = cleaned; setFirstBoxes(next);
+    if (cleaned && idx < 7) firstRefs.current[idx + 1]?.focus();
+  };
+  const handleFirstBoxKeyDown = (idx, e) => {
+    if (e.key === 'Backspace' && !firstBoxes[idx] && idx > 0) {
+      const next = [...firstBoxes]; next[idx - 1] = ''; setFirstBoxes(next);
+      firstRefs.current[idx - 1]?.focus();
+    }
+  };
+
+  // ── Paste-prize handlers ──
+  const handlePasteDraft = (key, digits, text) => {
+    const parsed = parsePastedNumbers(text, digits);
+    if (!parsed.length) return;
+    setPrizeNumbers(prev => {
+      const merged = [...new Set([...prev[key], ...parsed])];
+      return { ...prev, [key]: merged };
+    });
+    setPasteDraft(prev => ({ ...prev, [key]: '' }));
+  };
+  const removeChip = (key, idx) => {
+    setPrizeNumbers(prev => ({ ...prev, [key]: prev[key].filter((_, i) => i !== idx) }));
+  };
+
+  // ── Open / Close modal ──
+  const openResolveModal = (draw) => {
+    setResolveDraw(draw);
+    setFirstBoxes(Array(8).fill(''));
+    setPrizeNumbers({ second: [], third: [], fourth: [], fifth: [] });
+    setPasteDraft({ second: '', third: '', fourth: '', fifth: '' });
+  };
+  const closeResolveModal = () => {
+    setResolveDraw(null);
+    setFirstBoxes(Array(8).fill(''));
+    setPrizeNumbers({ second: [], third: [], fourth: [], fifth: [] });
+    setPasteDraft({ second: '', third: '', fourth: '', fifth: '' });
+  };
+
+  // ── Submit Result ──
+  const handleAnnounceResult = async () => {
+    const firstPrize = firstBoxes.join('').toUpperCase();
+    if (firstPrize.length !== 8) return toast.error('Fill all 8 boxes for 1st Prize');
+    for (const cfg of PRIZE_CONFIG) {
+      if (prizeNumbers[cfg.key].length !== cfg.count)
+        return toast.error(`${cfg.label} needs exactly ${cfg.count} numbers (have ${prizeNumbers[cfg.key].length})`);
+    }
     setResolving(true);
     try {
-      await api.post(`/admin/results/lottery`,
-        { drawId: resolveDraw.id, winningNumber: winningNumber.toUpperCase() }
-      );
+      await api.post(`/admin/results/lottery`, {
+        drawId: resolveDraw.id,
+        winningNumber: firstPrize,
+        prizes: {
+          second: prizeNumbers.second,
+          third: prizeNumbers.third,
+          fourth: prizeNumbers.fourth,
+          fifth: prizeNumbers.fifth,
+        },
+      });
       toast.success('Results announced & payouts processed!');
-      setResolveDraw(null); setWinningNumber('');
+      closeResolveModal();
       fetchGames();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to resolve draw');
+      toast.error(err.response?.data?.message || 'Failed to announce result');
     } finally {
       setResolving(false);
     }
@@ -444,7 +539,7 @@ export default function ManageLotteryGame() {
                       )}
                       {draw.status === 'closed' && (
                         <div className="flex gap-2">
-                          <button onClick={() => { setResolveDraw(draw); setWinningNumber(''); }}
+                          <button onClick={() => openResolveModal(draw)}
                             className="text-emerald-400 font-medium px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors text-xs">
                             Announce Result
                           </button>
@@ -466,33 +561,179 @@ export default function ManageLotteryGame() {
         </div>
       </div>
 
-      {/* ── Resolve Modal ── */}
+      {/* ── Multi-Prize Result Announcement Modal ── */}
       {resolveDraw && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-[#1e293b] border border-[#334155] p-8 rounded-2xl max-w-md w-full shadow-2xl">
-            <h2 className="text-xl font-bold text-white mb-1">Announce Lottery Result</h2>
-            <p className="text-sm text-slate-400 mb-6">
-              Game: <strong className="text-white">{resolveDraw.game?.name}</strong><br />
-              Scheduled: {new Date(resolveDraw.scheduled_at).toLocaleString('en-IN')}
-            </p>
-            <div className="mb-6">
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                Winning Ticket Number (8 characters)
-              </label>
-              <input type="text" value={winningNumber} onChange={e => setWinningNumber(e.target.value)}
-                placeholder="e.g. 46A42171" maxLength={8}
-                className="w-full bg-[#0f172a] border border-slate-700 focus:border-indigo-500 rounded-xl px-4 py-3 text-white font-mono text-xl tracking-[0.3em] uppercase placeholder-slate-600 focus:outline-none transition-colors" />
-              <p className="text-xs text-slate-500 mt-2">Format: 2 digits + 1 letter + 5 digits (e.g. 46A42171)</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3" onClick={e => { if (e.target === e.currentTarget) closeResolveModal(); }}>
+          <div
+            className="bg-[#0f172a] border border-[#1e293b] rounded-2xl shadow-2xl w-full flex flex-col"
+            style={{ maxWidth: 720, maxHeight: '92vh' }}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#1e293b] shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+                  <FiAward className="text-indigo-400" size={16} />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-white leading-none">Announce Result</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">{resolveDraw.game?.name} · {new Date(resolveDraw.scheduled_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                </div>
+              </div>
+              <button onClick={closeResolveModal} className="text-slate-500 hover:text-white transition-colors p-1 rounded-lg hover:bg-slate-700">
+                <FiX size={18} />
+              </button>
             </div>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => { setResolveDraw(null); setWinningNumber(''); }}
-                className="px-5 py-2.5 font-medium text-slate-400 hover:text-white transition-colors">
-                Cancel
-              </button>
-              <button onClick={handleResolveDraw} disabled={resolving}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-xl font-semibold transition-colors disabled:opacity-60 shadow-lg shadow-indigo-500/20">
-                {resolving ? 'Processing...' : 'Confirm & Pay Winners'}
-              </button>
+
+            {/* Scrollable body */}
+            <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
+
+              {/* ── 1st Prize ── */}
+              <div className="rounded-xl p-4" style={{ background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.25)' }}>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#818cf8' }}>🥇 1st Prize — 1 × 8-digit Number</span>
+                  {firstBoxes.every(b => b !== '') && (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 tracking-widest">
+                      {firstBoxes.join('').toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                <div className="flex gap-1.5">
+                  {BOX_META_1ST.map((meta, i) => (
+                    <div key={i} className="flex flex-col items-center gap-1 flex-1">
+                      <input
+                        ref={el => firstRefs.current[i] = el}
+                        type={meta.type}
+                        inputMode={meta.type === 'tel' ? 'numeric' : 'text'}
+                        maxLength={1}
+                        value={firstBoxes[i]}
+                        onChange={e => handleFirstBoxChange(i, e.target.value)}
+                        onKeyDown={e => handleFirstBoxKeyDown(i, e)}
+                        style={{
+                          height: 48, width: '100%', borderRadius: 10,
+                          textAlign: 'center', fontWeight: 900, fontSize: '1.1rem',
+                          outline: 'none', transition: 'all 0.15s',
+                          background: firstBoxes[i] ? '#1e3a5f' : '#0a0f1e',
+                          border: `2px solid ${firstBoxes[i] ? (i === 2 ? '#dc2626' : '#6366f1') : '#1e293b'}`,
+                          color: i === 2 ? '#f87171' : '#a5b4fc',
+                          fontFamily: "'Inter', monospace",
+                        }}
+                      />
+                      <span style={{ fontSize: 8, fontWeight: 900, color: i === 2 ? '#dc2626' : '#6366f1' }}>
+                        {i === 2 ? 'L' : 'N'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── 2nd – 5th Prizes ── */}
+              {PRIZE_CONFIG.map(cfg => {
+                const nums = prizeNumbers[cfg.key];
+                const draft = pasteDraft[cfg.key];
+                const isFull = nums.length >= cfg.count;
+                return (
+                  <div key={cfg.key} className="rounded-xl p-4" style={{ background: cfg.bg, border: `1px solid ${cfg.border}` }}>
+                    {/* Prize header */}
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-bold uppercase tracking-wider" style={{ color: cfg.color }}>
+                        {cfg.key === 'second' ? '🥈' : cfg.key === 'third' ? '🥉' : cfg.key === 'fourth' ? '🏅' : '🎖️'} {cfg.label} — {cfg.count} × {cfg.digits}-digit Numbers
+                      </span>
+                      <span
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                        style={{
+                          background: isFull ? 'rgba(52,211,153,0.15)' : 'rgba(255,255,255,0.05)',
+                          color: isFull ? '#34d399' : cfg.color,
+                          border: `1px solid ${isFull ? 'rgba(52,211,153,0.3)' : cfg.border}`,
+                        }}
+                      >
+                        {nums.length} / {cfg.count}
+                      </span>
+                    </div>
+
+                    {/* Chips */}
+                    {nums.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {nums.map((n, i) => (
+                          <span
+                            key={i}
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-mono font-bold"
+                            style={{ background: 'rgba(255,255,255,0.06)', color: cfg.color, border: `1px solid ${cfg.border}` }}
+                          >
+                            {n}
+                            <button
+                              onClick={() => removeChip(cfg.key, i)}
+                              className="ml-0.5 opacity-50 hover:opacity-100 transition-opacity"
+                              style={{ color: cfg.color, lineHeight: 1 }}
+                            >
+                              <FiX size={10} />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Paste area */}
+                    {!isFull && (
+                      <div className="relative">
+                        <textarea
+                          rows={2}
+                          value={draft}
+                          onChange={e => setPasteDraft(prev => ({ ...prev, [cfg.key]: e.target.value }))}
+                          onPaste={e => {
+                            e.preventDefault();
+                            const text = e.clipboardData.getData('text');
+                            handlePasteDraft(cfg.key, cfg.digits, text);
+                          }}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handlePasteDraft(cfg.key, cfg.digits, draft);
+                            }
+                          }}
+                          placeholder={`Paste ${cfg.digits}-digit numbers here (space / newline separated)…`}
+                          className="w-full resize-none text-xs font-mono rounded-lg px-3 py-2.5 focus:outline-none transition-colors placeholder-slate-600"
+                          style={{
+                            background: 'rgba(0,0,0,0.25)',
+                            border: `1px solid ${cfg.border}`,
+                            color: cfg.color,
+                          }}
+                        />
+                        {draft.trim() && (
+                          <button
+                            onClick={() => handlePasteDraft(cfg.key, cfg.digits, draft)}
+                            className="absolute right-2 bottom-2 text-[10px] font-bold px-2 py-0.5 rounded-md transition-colors"
+                            style={{ background: cfg.border, color: cfg.color }}
+                          >
+                            Add
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {isFull && (
+                      <p className="text-[10px] font-semibold" style={{ color: '#34d399' }}>✓ Complete — {cfg.count} numbers entered</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-[#1e293b] flex items-center justify-between gap-4 shrink-0">
+              <div className="text-xs text-slate-500">
+                All prizes must be complete before confirming.
+              </div>
+              <div className="flex gap-3">
+                <button onClick={closeResolveModal} className="px-5 py-2 font-medium text-slate-400 hover:text-white transition-colors text-sm">
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAnnounceResult}
+                  disabled={resolving}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-xl font-semibold transition-colors disabled:opacity-60 shadow-lg shadow-indigo-500/20 text-sm"
+                >
+                  {resolving ? 'Processing...' : 'Confirm & Announce'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
