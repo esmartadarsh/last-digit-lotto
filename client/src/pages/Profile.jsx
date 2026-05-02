@@ -1,4 +1,9 @@
-import { FiSettings, FiHelpCircle, FiLogOut, FiChevronRight, FiCreditCard, FiBell, FiShield, FiGift } from 'react-icons/fi';
+import { useState } from 'react';
+import toast from 'react-hot-toast';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../config/firebase';
+import api from '../config/api';
+import { FiSettings, FiHelpCircle, FiLogOut, FiChevronRight, FiCreditCard, FiBell, FiShield, FiGift, FiEdit2, FiX, FiCamera } from 'react-icons/fi';
 import useAuthStore from '../store/useAuthStore';
 
 const MENU_ITEMS = [
@@ -41,7 +46,54 @@ const STATS = [
 ];
 
 export default function Profile() {
-  const { user, logout } = useAuthStore();
+  const { user, logout, refreshProfile } = useAuthStore();
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editAvatar, setEditAvatar] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const openEditModal = () => {
+    setEditName(user?.name || '');
+    setEditAvatar(null);
+    setAvatarPreview(user?.avatar_url || null);
+    setIsEditModalOpen(true);
+  };
+
+  const handleAvatarSelect = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setEditAvatar(file);
+      setAvatarPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editName.trim()) return toast.error('Name cannot be empty');
+    setIsSaving(true);
+    try {
+      let avatar_url = user.avatar_url;
+      if (editAvatar) {
+        toast.loading('Uploading photo...', { id: 'avatar-upload' });
+        // Using profile-images path
+        const imgRef = ref(storage, `profile-images/avatar_${user.id}_${Date.now()}.webp`);
+        const snapshot = await uploadBytes(imgRef, editAvatar, { contentType: editAvatar.type });
+        avatar_url = await getDownloadURL(snapshot.ref);
+        toast.dismiss('avatar-upload');
+      }
+
+      await api.put('/users/me', { name: editName, avatar_url });
+      await refreshProfile();
+      toast.success('Profile updated successfully!');
+      setIsEditModalOpen(false);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update profile');
+      toast.dismiss('avatar-upload');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="pb-4">
@@ -63,9 +115,15 @@ export default function Profile() {
       {/* ── Profile Card (overlapping header) ── */}
       <div className="px-4 -mt-16 relative z-10">
         <div
-          className="bg-white rounded-3xl p-5 text-center"
+          className="relative bg-white rounded-3xl p-5 text-center"
           style={{ boxShadow: '0 12px 40px rgba(0,0,0,0.12)' }}
         >
+          <button
+            onClick={openEditModal}
+            className="absolute top-4 right-4 p-2 rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors z-20 cursor-pointer"
+          >
+            <FiEdit2 size={18} />
+          </button>
           {/* Avatar */}
           <div className="relative inline-block mb-4">
             <div
@@ -88,17 +146,6 @@ export default function Profile() {
                 </span>
               )}
             </div>
-            {/* Edit button */}
-            <button
-              className="absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center text-xs text-white active:scale-90 transition-transform"
-              style={{
-                background: 'linear-gradient(135deg, #dc2626, #ef4444)',
-                border: '2px solid #fff',
-                boxShadow: '0 4px 10px rgba(220,38,38,0.4)',
-              }}
-            >
-              ✏️
-            </button>
           </div>
 
           <h1 className="text-xl font-black text-gray-900 tracking-tight">{user?.name || 'Player'}</h1>
@@ -221,6 +268,71 @@ export default function Profile() {
           Log Out
         </button>
       </div>
+
+      {/* ── Edit Profile Modal ── */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl relative">
+            <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h2 className="text-lg font-black text-gray-900">Edit Profile</h2>
+              <button onClick={() => setIsEditModalOpen(false)} className="text-gray-400 hover:text-gray-600 p-1">
+                <FiX size={20} />
+              </button>
+            </div>
+
+            <div className="p-6">
+              {/* Avatar upload */}
+              <div className="flex flex-col items-center mb-6">
+                <div className="relative">
+                  <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-lg bg-gray-100 flex items-center justify-center"
+                    style={{ background: avatarPreview ? 'transparent' : 'linear-gradient(135deg, #dc2626, #7c3aed)' }}>
+                    {avatarPreview ? (
+                      <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-3xl font-black text-white">
+                        {(user?.name || 'P').charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <label className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-blue-600 border-2 border-white flex items-center justify-center text-white cursor-pointer hover:bg-blue-700 shadow-md transition-colors">
+                    <FiCamera size={14} />
+                    <input type="file" accept="image/*" onChange={handleAvatarSelect} className="hidden" />
+                  </label>
+                </div>
+                <p className="text-xs font-medium text-gray-400 mt-3">Tap camera icon to change</p>
+              </div>
+
+              {/* Name input */}
+              <div className="mb-2">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Display Name</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                  placeholder="Enter your name"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-semibold focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex gap-3">
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                className="flex-1 py-3 rounded-xl font-bold text-gray-500 bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveProfile}
+                disabled={isSaving}
+                className="flex-1 py-3 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all disabled:opacity-70"
+              >
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

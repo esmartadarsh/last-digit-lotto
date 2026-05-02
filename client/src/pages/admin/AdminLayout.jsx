@@ -23,8 +23,8 @@ export default function AdminLayout() {
       <aside className="w-64 bg-[#1e293b] border-r border-[#334155] flex flex-col shrink-0">
 
         {/* Logo/Brand */}
-        <div className="h-24 flex flex-col items-center justify-center px-6 border-b border-[#334155]">
-          <img src={Logo} alt="Logo" className="h-15 w-auto mb-1" />
+        <div className="h-20 flex flex-col items-center justify-center px-6 py-2 border-b border-[#334155]">
+          <img src={Logo} alt="Logo" className="h-13 w-auto rounded-xl" />
           <span className="font-bold text-sm tracking-tight">Admin Panel</span>
         </div>
 

@@ -19,6 +19,13 @@ const LotteryResult = sequelize.define('LotteryResult', {
     type: DataTypes.STRING(8),
     allowNull: false,
   },
+  // Multi-prize numbers stored as JSON:
+  // { second: [...5-digit], third: [...4-digit], fourth: [...4-digit], fifth: [...4-digit] }
+  prizes: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: null,
+  },
   // Firebase Storage URL of the official result image
   result_image_url: {
     type: DataTypes.STRING(500),

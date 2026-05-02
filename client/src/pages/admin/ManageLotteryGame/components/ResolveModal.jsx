@@ -1,4 +1,5 @@
-import { FiX, FiAward } from 'react-icons/fi';
+import { useRef } from 'react';
+import { FiX, FiAward, FiImage, FiTrash2 } from 'react-icons/fi';
 import { PRIZE_CONFIG } from '@/data.js';
 
 const BOX_META_1ST = [
@@ -13,7 +14,6 @@ export default function ResolveModal({
     resolving,
 
     firstBoxes,
-    setFirstBoxes,
     firstRefs,
     handleFirstBoxChange,
     handleFirstBoxKeyDown,
@@ -22,17 +22,27 @@ export default function ResolveModal({
     pasteDraft,
     setPasteDraft,
     handlePasteDraft,
-    removeChip
+    removeChip,
+
+    // Result image
+    resultImagePreview,
+    onResultImageSelect,
+    onResultImageClear,
 }) {
     if (!draw) return null;
 
+    const fileInputRef = useRef(null);
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3" onClick={e => { if (e.target === e.currentTarget) closeResolveModal(); }}>
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3"
+            onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+        >
             <div
                 className="bg-[#0f172a] border border-[#1e293b] rounded-2xl shadow-2xl w-full flex flex-col"
                 style={{ maxWidth: 720, maxHeight: '92vh' }}
             >
-                {/* Modal Header */}
+                {/* ── Modal Header ── */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-[#1e293b] shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center">
@@ -40,7 +50,9 @@ export default function ResolveModal({
                         </div>
                         <div>
                             <h2 className="text-base font-bold text-white leading-none">Announce Result</h2>
-                            <p className="text-xs text-slate-500 mt-0.5">{draw.game?.name} · {new Date(draw.scheduled_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                                {draw.game?.name} · {new Date(draw.scheduled_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                            </p>
                         </div>
                     </div>
                     <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors p-1 rounded-lg hover:bg-slate-700">
@@ -48,13 +60,63 @@ export default function ResolveModal({
                     </button>
                 </div>
 
-                {/* Scrollable body */}
+                {/* ── Scrollable body ── */}
                 <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
+
+                    {/* ── Result Image Upload ── */}
+                    <div className="rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+                            📄 Result Image (optional but recommended)
+                        </p>
+                        {resultImagePreview ? (
+                            <div className="relative rounded-xl overflow-hidden border border-slate-700 group" style={{ maxHeight: 180 }}>
+                                <img src={resultImagePreview} alt="Result preview" className="w-full object-cover" style={{ maxHeight: 180 }} />
+                                <button
+                                    type="button"
+                                    onClick={onResultImageClear}
+                                    className="absolute top-2 right-2 p-1.5 bg-black/70 hover:bg-red-600 text-white rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                >
+                                    <FiTrash2 size={14} />
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="w-full h-20 rounded-xl border-2 border-dashed border-slate-700 hover:border-indigo-500 flex items-center justify-center gap-2 text-slate-500 hover:text-indigo-400 transition-colors"
+                            >
+                                <FiImage size={18} />
+                                <span className="text-sm font-medium">Upload Result Image</span>
+                            </button>
+                        )}
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={e => {
+                                const file = e.target.files?.[0];
+                                if (file) onResultImageSelect(file);
+                                e.target.value = '';
+                            }}
+                        />
+                        {resultImagePreview && (
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="text-xs text-slate-400 hover:text-white mt-1.5 transition-colors"
+                            >
+                                ↑ Change image
+                            </button>
+                        )}
+                    </div>
 
                     {/* ── 1st Prize ── */}
                     <div className="rounded-xl p-4" style={{ background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.25)' }}>
                         <div className="flex items-center justify-between mb-3">
-                            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#818cf8' }}>🥇 1st Prize — 1 × 8-digit Number</span>
+                            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#818cf8' }}>
+                                🥇 1st Prize — 1 × 8-digit Number
+                            </span>
                             {firstBoxes.every(b => b !== '') && (
                                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 tracking-widest">
                                     {firstBoxes.join('').toUpperCase()}
@@ -100,7 +162,8 @@ export default function ResolveModal({
                                 {/* Prize header */}
                                 <div className="flex items-center justify-between mb-3">
                                     <span className="text-xs font-bold uppercase tracking-wider" style={{ color: cfg.color }}>
-                                        {cfg.key === 'second' ? '🥈' : cfg.key === 'third' ? '🥉' : cfg.key === 'fourth' ? '🏅' : '🎖️'} {cfg.label} — {cfg.count} × {cfg.digits}-digit Numbers
+                                        {cfg.key === 'second' ? '🥈' : cfg.key === 'third' ? '🥉' : cfg.key === 'fourth' ? '🏅' : '🎖️'}{' '}
+                                        {cfg.label} — {cfg.count} × {cfg.digits}-digit Numbers
                                     </span>
                                     <span
                                         className="text-[10px] font-bold px-2 py-0.5 rounded-full"
@@ -136,7 +199,7 @@ export default function ResolveModal({
                                     </div>
                                 )}
 
-                                {/* Paste area */}
+                                {/* Paste / type area */}
                                 {!isFull && (
                                     <div className="relative">
                                         <textarea
@@ -145,8 +208,7 @@ export default function ResolveModal({
                                             onChange={e => setPasteDraft(prev => ({ ...prev, [cfg.key]: e.target.value }))}
                                             onPaste={e => {
                                                 e.preventDefault();
-                                                const text = e.clipboardData.getData('text');
-                                                handlePasteDraft(cfg.key, cfg.digits, text);
+                                                handlePasteDraft(cfg.key, cfg.digits, e.clipboardData.getData('text'));
                                             }}
                                             onKeyDown={e => {
                                                 if (e.key === 'Enter') {
@@ -174,14 +236,16 @@ export default function ResolveModal({
                                     </div>
                                 )}
                                 {isFull && (
-                                    <p className="text-[10px] font-semibold" style={{ color: '#34d399' }}>✓ Complete — {cfg.count} numbers entered</p>
+                                    <p className="text-[10px] font-semibold" style={{ color: '#34d399' }}>
+                                        ✓ Complete — {cfg.count} numbers entered
+                                    </p>
                                 )}
                             </div>
                         );
                     })}
                 </div>
 
-                {/* Footer */}
+                {/* ── Footer ── */}
                 <div className="px-6 py-4 border-t border-[#1e293b] flex items-center justify-between gap-4 shrink-0">
                     <div className="text-xs text-slate-500">
                         All prizes must be complete before confirming.

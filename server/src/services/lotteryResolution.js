@@ -1,40 +1,93 @@
 const { sequelize } = require('../config/database');
 const { LotteryTicket, LotteryResult, Draw, Transaction, User } = require('../models');
 const { syncResultToFirestore } = require('./firestoreSync');
-const { sendResultNotification, sendWinNotification } = require('./notificationService');
+const { sendResultNotification } = require('./notificationService');
 const { storage } = require('../config/firebase');
 
-// Prize for matching the exact winning ticket number
-const JACKPOT_PRIZE = 100000; // ₹1,00,000
+// ── Prize amounts (₹) ──────────────────────────────────────────
+const PRIZE_AMOUNTS = {
+  first:  1_00_00_000, // ₹1 Crore  (1st prize — full 8-char match)
+  second:    10_000,   // ₹10,000   (2nd prize — last 5 digits)
+  third:        500,   // ₹500      (3rd prize — last 4 digits)
+  fourth:        50,   // ₹50       (4th prize — last 4 digits)
+  fifth:         20,   // ₹20       (5th prize — last 4 digits)
+};
 
 /**
- * Called when admin announces the lottery winning number.
- * Runs inside a single MySQL transaction:
- *   1. Saves the result
- *   2. Marks every ticket won/lost
- *   3. Credits winners' balances
- *   4. Writes transaction logs
- *   5. Marks draw completed
- * Then pushes to Firestore and sends FCM (outside the DB transaction).
+ * Determine which prize tier (if any) a ticket wins.
+ *
+ * Matching rules:
+ *  1st  — full 8-char ticket number === winningNumber
+ *  2nd  — last 5 digits of ticket_number ∈ prizes.second  (5-digit strings)
+ *  3rd  — last 4 digits of ticket_number ∈ prizes.third   (4-digit strings)
+ *  4th  — last 4 digits of ticket_number ∈ prizes.fourth  (4-digit strings)
+ *  5th  — last 4 digits of ticket_number ∈ prizes.fifth   (4-digit strings)
+ *
+ * Returns the highest matching tier name, or null if no match.
+ * Sets are used for O(1) lookup.
  */
-async function resolveLotteryDraw(drawId, winningNumber, adminUserId) {
+function determinePrizeTier(ticketNumber, winningNumber, prizeSets) {
+  const tn = ticketNumber.toUpperCase();
+
+  // 1st prize — exact full match
+  if (tn === winningNumber.toUpperCase()) return 'first';
+
+  const last5 = tn.slice(-5);
+  const last4 = tn.slice(-4);
+
+  // 2nd prize — last 5 digits
+  if (prizeSets.second.has(last5)) return 'second';
+
+  // 3rd prize — last 4 digits (checked before 4th/5th for priority)
+  if (prizeSets.third.has(last4))  return 'third';
+
+  // 4th prize
+  if (prizeSets.fourth.has(last4)) return 'fourth';
+
+  // 5th prize
+  if (prizeSets.fifth.has(last4))  return 'fifth';
+
+  return null;
+}
+
+/**
+ * Called when admin announces the lottery winning number + all prize numbers.
+ *
+ * @param {string} drawId
+ * @param {string} winningNumber   — 8-char 1st prize number e.g. "88C20662"
+ * @param {object} prizes          — { second:string[], third:string[], fourth:string[], fifth:string[] }
+ * @param {string|null} resultImageUrl — Firebase Storage URL of the result image
+ * @param {string} adminUserId
+ */
+async function resolveLotteryDraw(drawId, winningNumber, prizes, resultImageUrl, adminUserId) {
   let winnersCount = 0;
   let totalPaidOut = 0;
+
+  // Build O(1) lookup Sets for each tier
+  const prizeSets = {
+    second: new Set((prizes.second  || []).map(n => String(n))),
+    third:  new Set((prizes.third   || []).map(n => String(n))),
+    fourth: new Set((prizes.fourth  || []).map(n => String(n))),
+    fifth:  new Set((prizes.fifth   || []).map(n => String(n))),
+  };
 
   await sequelize.transaction(async (t) => {
     const draw = await Draw.findByPk(drawId, { transaction: t });
     if (!draw) throw Object.assign(new Error('Draw not found'), { status: 404 });
     if (draw.status === 'completed') throw Object.assign(new Error('Draw already resolved'), { status: 400 });
 
-    // 1. Mark draw as processing (blocks any late ticket purchases)
+    // 1. Mark draw as processing
     await draw.update({ status: 'processing' }, { transaction: t });
 
-    // 2. Save winning number
-    // NOTE: announced_by is null because the announcer is an Admin (admins table),
-    // not a User (users table). The FK on lottery_results.announced_by → users.id
-    // would fail if we passed an admin's UUID.
+    // 2. Save winning result (all prize numbers stored in prizes JSON column)
     await LotteryResult.create(
-      { draw_id: drawId, winning_number: winningNumber.toUpperCase(), announced_by: null },
+      {
+        draw_id:          drawId,
+        winning_number:   winningNumber.toUpperCase(),
+        prizes:           prizes,
+        result_image_url: resultImageUrl || null,
+        announced_by:     null,
+      },
       { transaction: t }
     );
 
@@ -47,31 +100,35 @@ async function resolveLotteryDraw(drawId, winningNumber, adminUserId) {
 
     // 4. Resolve each ticket
     for (const ticket of tickets) {
-      const isWin = ticket.ticket_number === winningNumber.toUpperCase();
-      await ticket.update({ status: isWin ? 'won' : 'lost' }, { transaction: t });
+      const tier = determinePrizeTier(ticket.ticket_number, winningNumber, prizeSets);
 
-      if (isWin) {
+      if (tier) {
+        const prizeAmount = PRIZE_AMOUNTS[tier];
+        await ticket.update({ status: 'won', win_amount: prizeAmount }, { transaction: t });
+
         winnersCount++;
-        totalPaidOut += JACKPOT_PRIZE;
+        totalPaidOut += prizeAmount;
 
         const user = ticket.user;
         const balanceBefore = parseFloat(user.balance);
-        const balanceAfter = balanceBefore + JACKPOT_PRIZE;
+        const balanceAfter  = balanceBefore + prizeAmount;
 
         await user.update({ balance: balanceAfter }, { transaction: t });
         await Transaction.create(
           {
-            user_id: ticket.user_id,
-            type: 'win_lottery',
-            amount: JACKPOT_PRIZE,
+            user_id:        ticket.user_id,
+            type:           'win_lottery',
+            amount:         prizeAmount,
             balance_before: balanceBefore,
-            balance_after: balanceAfter,
-            reference_id: ticket.id,
+            balance_after:  balanceAfter,
+            reference_id:   ticket.id,
             reference_type: 'lottery_ticket',
-            description: `🏆 Won lottery! Ticket: ${ticket.ticket_number}`,
+            description:    `🏆 Won lottery ${tier} prize! Ticket: ${ticket.ticket_number} — ₹${prizeAmount.toLocaleString('en-IN')}`,
           },
           { transaction: t }
         );
+      } else {
+        await ticket.update({ status: 'lost' }, { transaction: t });
       }
     }
 
@@ -79,21 +136,20 @@ async function resolveLotteryDraw(drawId, winningNumber, adminUserId) {
     await draw.update({ status: 'completed' }, { transaction: t });
   });
 
-  // 6. Realtime push (outside DB transaction — non-fatal if it fails)
+  // 6. Realtime push to Firestore (non-fatal)
   await syncResultToFirestore(drawId, { type: 'lottery', winningNumber });
 
-  // 7. FCM notifications
+  // 7. FCM notifications (non-fatal)
   await sendResultNotification(drawId, 'lottery', winningNumber);
 
-  // 8. Delete banner from Firebase Storage (non-fatal)
+  // 8. Clean up draw banner from Firebase Storage (non-fatal)
   try {
     const draw = await Draw.findByPk(drawId);
     if (draw?.banner_url) {
       const bucket = storage.bucket();
       const match = draw.banner_url.match(/\/o\/([^?]+)/);
       if (match) {
-        const filePath = decodeURIComponent(match[1]);
-        await bucket.file(filePath).delete();
+        await bucket.file(decodeURIComponent(match[1])).delete();
       }
       await draw.update({ banner_url: null });
     }

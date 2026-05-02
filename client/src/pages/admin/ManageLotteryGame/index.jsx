@@ -66,15 +66,18 @@ export default function ManageLotteryGame() {
   const [uploadingBanner, setUploadingBanner] = useState(false);
 
   // ── Resolve / Announce Result ──
-  const [resolveDraw, setResolveDraw] = useState(null);
-  const [resolving, setResolving] = useState(false);
+  const [resolveDraw, setResolveDraw]   = useState(null);
+  const [resolving, setResolving]       = useState(false);
   // 1st prize — 8 individual boxes
-  const [firstBoxes, setFirstBoxes] = useState(Array(8).fill(''));
-  const firstRefs = useRef([]);
+  const [firstBoxes, setFirstBoxes]     = useState(Array(8).fill(''));
+  const firstRefs                        = useRef([]);
   // Paste-based prizes  { second: [], third: [], fourth: [], fifth: [] }
   const [prizeNumbers, setPrizeNumbers] = useState({ second: [], third: [], fourth: [], fifth: [] });
   // Textarea draft values per prize
-  const [pasteDraft, setPasteDraft] = useState({ second: '', third: '', fourth: '', fifth: '' });
+  const [pasteDraft, setPasteDraft]     = useState({ second: '', third: '', fourth: '', fifth: '' });
+  // Result image
+  const [resultImageFile, setResultImageFile]       = useState(null);
+  const [resultImagePreview, setResultImagePreview] = useState(null);
 
   // ── Fetchers ──
   const fetchGames = async () => {
@@ -135,8 +138,11 @@ export default function ManageLotteryGame() {
       if (bannerBlob) {
         setUploadingBanner(true);
         toast.loading('Uploading banner...', { id: 'banner' });
-        const drawTempId = `lottery_${Date.now()}`;
-        const storageRef = ref(storage, `draw-banners/${drawTempId}.webp`);
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0];
+        const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
+        const drawTempId = `lottery_${dateStr}_${timeStr}_${Date.now()}`;
+        const storageRef = ref(storage, `draw-banners/lottery/${drawTempId}.webp`);
         const snapshot = await uploadBytes(storageRef, bannerBlob, { contentType: 'image/webp' });
         banner_url = await getDownloadURL(snapshot.ref);
         toast.dismiss('banner');
@@ -144,7 +150,7 @@ export default function ManageLotteryGame() {
       }
 
       await api.post(`/admin/draws`,
-        { game_id: parseInt(selectedGameId), scheduled_at, ticket_price: parseFloat(ticketPrice), banner_url }
+        { game_id: parseInt(selectedGameId), scheduled_at, ticket_price: parseFloat(ticketPrice), time_slot: drawHour, banner_url }
       );
       toast.success('Draw created successfully!');
       setSelectedGameId(''); setDrawDate(''); setDrawHour(''); setTicketPrice('');
@@ -237,18 +243,32 @@ export default function ManageLotteryGame() {
     setPrizeNumbers(prev => ({ ...prev, [key]: prev[key].filter((_, i) => i !== idx) }));
   };
 
+  // ── Result image handlers ──
+  const handleResultImageSelect = (file) => {
+    setResultImageFile(file);
+    setResultImagePreview(URL.createObjectURL(file));
+  };
+  const handleResultImageClear = () => {
+    setResultImageFile(null);
+    setResultImagePreview(null);
+  };
+
   // ── Open / Close modal ──
   const openResolveModal = (draw) => {
     setResolveDraw(draw);
     setFirstBoxes(Array(8).fill(''));
     setPrizeNumbers({ second: [], third: [], fourth: [], fifth: [] });
     setPasteDraft({ second: '', third: '', fourth: '', fifth: '' });
+    setResultImageFile(null);
+    setResultImagePreview(null);
   };
   const closeResolveModal = () => {
     setResolveDraw(null);
     setFirstBoxes(Array(8).fill(''));
     setPrizeNumbers({ second: [], third: [], fourth: [], fifth: [] });
     setPasteDraft({ second: '', third: '', fourth: '', fifth: '' });
+    setResultImageFile(null);
+    setResultImagePreview(null);
   };
 
   // ── Submit Result ──
@@ -261,15 +281,29 @@ export default function ManageLotteryGame() {
     }
     setResolving(true);
     try {
+      // Upload result image to Firebase Storage if selected
+      let result_image_url = null;
+      if (resultImageFile) {
+        toast.loading('Uploading result image...', { id: 'result-img' });
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0];
+        const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
+        const imgRef = ref(storage, `results/result_lottery_${resolveDraw.id}_${dateStr}_${timeStr}_${Date.now()}.webp`);
+        const snapshot = await uploadBytes(imgRef, resultImageFile, { contentType: resultImageFile.type });
+        result_image_url = await getDownloadURL(snapshot.ref);
+        toast.dismiss('result-img');
+      }
+
       await api.post(`/admin/results/lottery`, {
         drawId: resolveDraw.id,
         winningNumber: firstPrize,
         prizes: {
           second: prizeNumbers.second,
-          third: prizeNumbers.third,
+          third:  prizeNumbers.third,
           fourth: prizeNumbers.fourth,
-          fifth: prizeNumbers.fifth,
+          fifth:  prizeNumbers.fifth,
         },
+        result_image_url,
       });
       toast.success('Results announced & payouts processed!');
       closeResolveModal();
@@ -350,17 +384,19 @@ export default function ManageLotteryGame() {
         resolving={resolving}
 
         firstBoxes={firstBoxes}
-        setFirstBoxes={setFirstBoxes}
         firstRefs={firstRefs}
         handleFirstBoxChange={handleFirstBoxChange}
         handleFirstBoxKeyDown={handleFirstBoxKeyDown}
 
-        prizeConfig={PRIZE_CONFIG}
         prizeNumbers={prizeNumbers}
         pasteDraft={pasteDraft}
         setPasteDraft={setPasteDraft}
         handlePasteDraft={handlePasteDraft}
         removeChip={removeChip}
+
+        resultImagePreview={resultImagePreview}
+        onResultImageSelect={handleResultImageSelect}
+        onResultImageClear={handleResultImageClear}
       />
 
       {/* ── Image Cropper Modal ── */}

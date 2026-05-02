@@ -41,6 +41,12 @@ const LotteryTicket = sequelize.define('LotteryTicket', {
     allowNull: false,
     defaultValue: 'active',
   },
+  // Filled when status = 'won' — the prize amount credited to the user
+  win_amount: {
+    type: DataTypes.DECIMAL(12, 2),
+    allowNull: true,
+    defaultValue: null,
+  },
 }, {
   tableName: 'lottery_tickets',
   timestamps: true,

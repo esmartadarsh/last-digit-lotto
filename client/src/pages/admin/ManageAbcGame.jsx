@@ -102,8 +102,6 @@ export default function ManageAbcGame() {
       return toast.error('All fields are required including all three digit prices');
     }
     const scheduled_at = `${drawDate}T${drawHour}:00`;
-    // Derive time_slot label from hour: 13:00 → 1PM, 20:00 → 8PM, else null
-    const derivedSlot = drawHour === '13:00' ? '1PM' : drawHour === '20:00' ? '8PM' : null;
     setCreatingDraw(true);
     try {
       let banner_url = null;
@@ -111,8 +109,11 @@ export default function ManageAbcGame() {
       if (bannerBlob) {
         setUploadingBanner(true);
         toast.loading('Uploading banner...', { id: 'banner' });
-        const drawTempId = `abc_${Date.now()}`;
-        const storageRef = ref(storage, `draw-banners/${drawTempId}.webp`);
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0];
+        const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
+        const drawTempId = `abc_${dateStr}_${timeStr}_${Date.now()}`;
+        const storageRef = ref(storage, `draw-banners/adb/${drawTempId}.webp`);
         const snapshot = await uploadBytes(storageRef, bannerBlob, { contentType: 'image/webp' });
         banner_url = await getDownloadURL(snapshot.ref);
         toast.dismiss('banner');
@@ -126,7 +127,7 @@ export default function ManageAbcGame() {
           single_digit_price: parseFloat(singleDigitPrice),
           double_digit_price: parseFloat(doubleDigitPrice),
           triple_digit_price: parseFloat(tripleDigitPrice),
-          time_slot: derivedSlot,
+          time_slot: drawHour,
           banner_url,
         }
       );
@@ -303,14 +304,9 @@ export default function ManageAbcGame() {
                 className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-red-500 transition-colors" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Time Slot</label>
-              <select value={drawHour} onChange={e => setDrawHour(e.target.value)}
-                className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-red-500 transition-colors">
-                <option value="">Select time...</option>
-                {TIME_SLOTS.map(s => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
-                ))}
-              </select>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Time</label>
+              <input type="time" value={drawHour} onChange={e => setDrawHour(e.target.value)} required
+                className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-red-500 transition-colors" />
             </div>
 
             {/* ── ABC-specific prices ── */}
@@ -415,7 +411,6 @@ export default function ManageAbcGame() {
               <tr>
                 {/* <th className="px-4 py-4">Banner</th> */}
                 <th className="px-6 py-4">Game</th>
-                <th className="px-6 py-4">Time Slot</th>
                 <th className="px-6 py-4">Scheduled At</th>
                 <th className="px-6 py-4">Single (₹)</th>
                 <th className="px-6 py-4">Double (₹)</th>
@@ -444,14 +439,6 @@ export default function ManageAbcGame() {
                   </td> */}
                   <td className="px-6 py-4">
                     <span className="font-semibold text-white">{draw.game?.name}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    {draw.time_slot ? (
-                      <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${draw.time_slot === '1PM'
-                        ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20'
-                        : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
-                        }`}>{draw.time_slot}</span>
-                    ) : <span className="text-slate-500 text-xs">—</span>}
                   </td>
                   <td className="px-6 py-4">
                     <span className="font-semibold text-white">
@@ -516,7 +503,7 @@ export default function ManageAbcGame() {
           <div className="bg-[#1e293b] border border-[#334155] p-8 rounded-2xl max-w-md w-full shadow-2xl">
             <h2 className="text-xl font-bold text-white mb-1">Announce ABC Result</h2>
             <p className="text-sm text-slate-400 mb-6">
-              Game: <strong className="text-white">{resolveDraw.game?.name}</strong> · {resolveDraw.time_slot}<br />
+              Game: <strong className="text-white">{resolveDraw.game?.name}</strong><br />
               Scheduled: {new Date(resolveDraw.scheduled_at).toLocaleString('en-IN')}
             </p>
 

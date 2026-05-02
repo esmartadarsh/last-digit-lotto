@@ -22,12 +22,7 @@ router.use(authenticate, adminOnly);
  * Create a new draw manually.
  */
 
-const VALID_TIME_SLOTS = [
-  '00:00', '01:00', '02:00', '03:00', '04:00', '05:00',
-  '06:00', '07:00', '08:00', '09:00', '10:00', '11:00',
-  '12:00', '13:00', '14:00', '15:00', '16:00', '17:00',
-  '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'
-];
+// TIME_SLOTS removed to allow any time
 
 router.post(
   '/draws',
@@ -35,7 +30,7 @@ router.post(
     body('game_id').isInt({ min: 1 }),
     body('scheduled_at').isISO8601().withMessage('Must be ISO date e.g. 2026-04-15T13:00:00'),
     body('ticket_price').optional({ nullable: true }).isFloat({ min: 0 }),
-    body('time_slot').optional({ nullable: true }).isIn(VALID_TIME_SLOTS),
+    body('time_slot').optional({ nullable: true }).isString(),
     body('banner_url').optional().isURL(),
     body('single_digit_price').optional({ nullable: true }).isFloat({ min: 0 }),
     body('double_digit_price').optional({ nullable: true }).isFloat({ min: 0 }),
@@ -208,18 +203,26 @@ router.post(
   [
     body('drawId').isUUID(),
     body('winningNumber')
-      .matches(/^[0-9]{2}[A-Z][0-9]{5}$/)
+      .matches(/^[0-9]{2}[A-Z][0-9]{5}$/i)
       .withMessage('Format: [NN][L][NNNNN] e.g. 46A42830'),
+    body('prizes').isObject().withMessage('prizes must be an object'),
+    body('prizes.second').isArray({ min: 10, max: 10 }).withMessage('2nd prize needs exactly 10 numbers'),
+    body('prizes.third').isArray({ min: 10, max: 10 }).withMessage('3rd prize needs exactly 10 numbers'),
+    body('prizes.fourth').isArray({ min: 10, max: 10 }).withMessage('4th prize needs exactly 10 numbers'),
+    body('prizes.fifth').isArray({ min: 100, max: 100 }).withMessage('5th prize needs exactly 100 numbers'),
+    body('result_image_url').optional({ nullable: true }).isString(),
   ],
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
 
     try {
-      const { drawId, winningNumber } = req.body;
+      const { drawId, winningNumber, prizes, result_image_url } = req.body;
       const { winnersCount, totalPaidOut } = await resolveLotteryDraw(
         drawId,
-        winningNumber,
+        winningNumber.toUpperCase(),
+        prizes,
+        result_image_url || null,
         req.user.id
       );
 

@@ -97,13 +97,18 @@ export default function BuyLotteryTicket() {
 
   /* ── Actions ── */
 
-  // Add 10 fully random tickets
+  // Add 10 fully random tickets (replaces existing quick picks to avoid piling up)
   const addQuickPicks = () => {
     const newItems = Array.from({ length: 10 }, () => ({
       kind: "ticket",
       id: generateTicketId(),
+      isQuickPick: true,
     }));
-    setCartItems((prev) => [...prev, ...newItems]);
+    setCartItems((prev) => {
+      // Filter out any previous quick picks so we only ever have 1 set of 10 at a time
+      const nonQuickPicks = prev.filter((item) => !item.isQuickPick);
+      return [...nonQuickPicks, ...newItems];
+    });
   };
 
   const addOneTicket = () =>

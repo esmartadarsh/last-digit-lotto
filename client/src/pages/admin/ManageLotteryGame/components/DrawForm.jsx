@@ -78,17 +78,14 @@ export default function DrawForm({
 
                     {/* Time */}
                     <div>
-                        <label className="label">Time Slot</label>
-                        <select
+                        <label className="label">Time</label>
+                        <input
+                            type="time"
                             value={drawHour}
                             onChange={(e) => setDrawHour(e.target.value)}
                             className="input"
-                        >
-                            <option value="">Select time...</option>
-                            {TIME_SLOTS.map(s => (
-                                <option key={s.value} value={s.value}>{s.label}</option>
-                            ))}
-                        </select>
+                            required
+                        />
                     </div>
 
                     {/* Price */}
