@@ -13,4 +13,19 @@ const TIME_SLOTS = [
     { label: '10 PM', value: '22:00' }, { label: '11 PM', value: '23:00' },
 ];
 
-export { TIME_SLOTS };
+const STATUS_COLORS = {
+    open: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
+    closed: 'bg-amber-500/10 text-amber-400 border border-amber-500/20',
+    processing: 'bg-blue-500/10 text-blue-400 border border-blue-500/20',
+    completed: 'bg-slate-700/50 text-slate-400 border border-slate-600',
+};
+
+// ── Prize configs ──
+const PRIZE_CONFIG = [
+    { key: 'second', label: '2nd Prize', digits: 5, count: 10, color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.25)' },
+    { key: 'third', label: '3rd Prize', digits: 4, count: 10, color: '#60a5fa', bg: 'rgba(96,165,250,0.08)', border: 'rgba(96,165,250,0.25)' },
+    { key: 'fourth', label: '4th Prize', digits: 4, count: 10, color: '#a78bfa', bg: 'rgba(167,139,250,0.08)', border: 'rgba(167,139,250,0.25)' },
+    { key: 'fifth', label: '5th Prize', digits: 4, count: 100, color: '#34d399', bg: 'rgba(52,211,153,0.08)', border: 'rgba(52,211,153,0.25)' },
+];
+
+export { TIME_SLOTS, STATUS_COLORS, PRIZE_CONFIG };

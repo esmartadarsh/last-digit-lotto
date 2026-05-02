@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
@@ -15,22 +17,54 @@ body {
 }
 
 /* ── Scrollbar ── */
-::-webkit-scrollbar { width: 3px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(220,38,38,0.3); border-radius: 99px; }
+::-webkit-scrollbar {
+  width: 3px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(220, 38, 38, 0.3);
+  border-radius: 99px;
+}
 
 /* ── Keyframes ── */
 @keyframes shimmer {
-  0%   { background-position: -400% center; }
-  100% { background-position:  400% center; }
+  0% {
+    background-position: -400% center;
+  }
+
+  100% {
+    background-position: 400% center;
+  }
 }
+
 @keyframes pulse-badge {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50%       { transform: scale(1.15); opacity: 0.7; }
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.15);
+    opacity: 0.7;
+  }
 }
+
 @keyframes float-y {
-  0%, 100% { transform: translateY(0); }
-  50%       { transform: translateY(-6px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-6px);
+  }
 }
 
 /* ── Utilities ── */
@@ -42,61 +76,102 @@ body {
   -webkit-text-fill-color: transparent;
   animation: shimmer 3s linear infinite;
 }
+
 .live-dot {
   animation: pulse-badge 1.4s ease-in-out infinite;
 }
-.float { animation: float-y 4s ease-in-out infinite; }
+
+.float {
+  animation: float-y 4s ease-in-out infinite;
+}
 
 
 /* ── Custom Scrollbar ── */
 ::-webkit-scrollbar {
   width: 3px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: rgba(139, 92, 246, 0.35);
   border-radius: 99px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(139, 92, 246, 0.6);
 }
 
 /* ── Keyframe Animations ── */
 @keyframes blob-pulse {
-  0%, 100% { opacity: 0.5; transform: scale(1); }
-  50%       { opacity: 0.85; transform: scale(1.08); }
+
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.85;
+    transform: scale(1.08);
+  }
 }
 
 @keyframes float-y {
-  0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-8px); }
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
 }
 
 @keyframes shimmer {
-  0%   { background-position: -400% center; }
-  100% { background-position: 400% center; }
+  0% {
+    background-position: -400% center;
+  }
+
+  100% {
+    background-position: 400% center;
+  }
 }
 
 @keyframes ping-slow {
-  0%, 100% { transform: scale(1); opacity: 0.8; }
-  50%       { transform: scale(1.15); opacity: 0.4; }
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+
+  50% {
+    transform: scale(1.15);
+    opacity: 0.4;
+  }
 }
 
 /* ── Utility Classes ── */
 .blob {
   animation: blob-pulse 7s ease-in-out infinite;
 }
+
 .blob-delay-2 {
   animation-delay: 2.5s;
 }
+
 .blob-delay-4 {
   animation-delay: 4.5s;
 }
+
 .float {
   animation: float-y 4s ease-in-out infinite;
 }
+
 .shimmer-text {
   background: linear-gradient(90deg, #c084fc, #f0abfc, #818cf8, #c084fc);
   background-size: 300% auto;
@@ -105,32 +180,48 @@ body {
   -webkit-text-fill-color: transparent;
   animation: shimmer 4s linear infinite;
 }
+
 .glass-card {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.07);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
+
 .glow-purple {
   box-shadow: 0 0 30px rgba(139, 92, 246, 0.3);
 }
+
 .glow-pink {
   box-shadow: 0 0 30px rgba(236, 72, 153, 0.3);
 }
+
 .active-indicator {
   background: linear-gradient(90deg, #a855f7, #ec4899);
   box-shadow: 0 0 12px rgba(168, 85, 247, 0.8), 0 0 24px rgba(168, 85, 247, 0.4);
 }
+
 .btn-primary {
   background: linear-gradient(135deg, #a855f7, #7c3aed);
   box-shadow: 0 8px 32px rgba(139, 92, 246, 0.45);
   transition: all 0.2s ease;
 }
+
 .btn-primary:hover {
   box-shadow: 0 12px 40px rgba(139, 92, 246, 0.6);
   transform: translateY(-1px);
 }
+
 .btn-primary:active {
   transform: scale(0.96);
   box-shadow: 0 4px 16px rgba(139, 92, 246, 0.3);
+}
+
+/* global.css */
+.label {
+  @apply block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2;
+}
+
+.input {
+  @apply w-full bg-[#0f172a] border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-red-500;
 }
