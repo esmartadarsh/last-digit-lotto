@@ -138,10 +138,8 @@ export default function ManageLotteryGame() {
       if (bannerBlob) {
         setUploadingBanner(true);
         toast.loading('Uploading banner...', { id: 'banner' });
-        const now = new Date();
-        const dateStr = now.toISOString().split('T')[0];
-        const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
-        const drawTempId = `lottery_${dateStr}_${timeStr}_${Date.now()}`;
+        const timeStr = drawHour.replace(/:/g, '-');
+        const drawTempId = `lottery_${drawDate}_${timeStr}_${Date.now()}`;
         const storageRef = ref(storage, `draw-banners/lottery/${drawTempId}.webp`);
         const snapshot = await uploadBytes(storageRef, bannerBlob, { contentType: 'image/webp' });
         banner_url = await getDownloadURL(snapshot.ref);
@@ -285,9 +283,9 @@ export default function ManageLotteryGame() {
       let result_image_url = null;
       if (resultImageFile) {
         toast.loading('Uploading result image...', { id: 'result-img' });
-        const now = new Date();
-        const dateStr = now.toISOString().split('T')[0];
-        const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
+        const scheduledDate = new Date(resolveDraw.scheduled_at);
+        const dateStr = scheduledDate.toISOString().split('T')[0];
+        const timeStr = scheduledDate.toTimeString().split(' ')[0].replace(/:/g, '-');
         const imgRef = ref(storage, `results/result_lottery_${resolveDraw.id}_${dateStr}_${timeStr}_${Date.now()}.webp`);
         const snapshot = await uploadBytes(imgRef, resultImageFile, { contentType: resultImageFile.type });
         result_image_url = await getDownloadURL(snapshot.ref);

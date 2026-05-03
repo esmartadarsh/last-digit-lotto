@@ -5,7 +5,6 @@ import useAuthStore from '../../store/useAuthStore';
 import ImageCropperModal from '../../components/ImageCropperModal';
 import { storage } from '../../config/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { TIME_SLOTS } from '../../data.js';
 import api from '../../config/api';
 
 const STATUS_COLORS = {
@@ -109,10 +108,8 @@ export default function ManageAbcGame() {
       if (bannerBlob) {
         setUploadingBanner(true);
         toast.loading('Uploading banner...', { id: 'banner' });
-        const now = new Date();
-        const dateStr = now.toISOString().split('T')[0];
-        const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
-        const drawTempId = `abc_${dateStr}_${timeStr}_${Date.now()}`;
+        const timeStr = drawHour.replace(/:/g, '-');
+        const drawTempId = `abc_${drawDate}_${timeStr}_${Date.now()}`;
         const storageRef = ref(storage, `draw-banners/adb/${drawTempId}.webp`);
         const snapshot = await uploadBytes(storageRef, bannerBlob, { contentType: 'image/webp' });
         banner_url = await getDownloadURL(snapshot.ref);
