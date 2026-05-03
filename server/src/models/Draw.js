@@ -19,7 +19,7 @@ const Draw = sequelize.define('Draw', {
   },
   // Only for ABC games
   time_slot: {
-    type: DataTypes.ENUM('1PM', '8PM'),
+    type: DataTypes.CHAR(5),
     allowNull: true,
   },
   // Price snapshot at the time of draw creation (used for lottery draws)

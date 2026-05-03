@@ -6,7 +6,7 @@ import ImageCropperModal from '@/components/ImageCropperModal';
 import { storage } from '@/config/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import api from '@/config/api';
-import { TIME_SLOTS, PRIZE_CONFIG } from '@/data.js'
+import { PRIZE_CONFIG } from '@/data.js'
 import Header from './components/Header'
 import GameForm from './components/GameForm'
 import GamesList from './components/GamesList'
@@ -66,17 +66,17 @@ export default function ManageLotteryGame() {
   const [uploadingBanner, setUploadingBanner] = useState(false);
 
   // ── Resolve / Announce Result ──
-  const [resolveDraw, setResolveDraw]   = useState(null);
-  const [resolving, setResolving]       = useState(false);
+  const [resolveDraw, setResolveDraw] = useState(null);
+  const [resolving, setResolving] = useState(false);
   // 1st prize — 8 individual boxes
-  const [firstBoxes, setFirstBoxes]     = useState(Array(8).fill(''));
-  const firstRefs                        = useRef([]);
+  const [firstBoxes, setFirstBoxes] = useState(Array(8).fill(''));
+  const firstRefs = useRef([]);
   // Paste-based prizes  { second: [], third: [], fourth: [], fifth: [] }
   const [prizeNumbers, setPrizeNumbers] = useState({ second: [], third: [], fourth: [], fifth: [] });
   // Textarea draft values per prize
-  const [pasteDraft, setPasteDraft]     = useState({ second: '', third: '', fourth: '', fifth: '' });
+  const [pasteDraft, setPasteDraft] = useState({ second: '', third: '', fourth: '', fifth: '' });
   // Result image
-  const [resultImageFile, setResultImageFile]       = useState(null);
+  const [resultImageFile, setResultImageFile] = useState(null);
   const [resultImagePreview, setResultImagePreview] = useState(null);
 
   // ── Fetchers ──
@@ -299,9 +299,9 @@ export default function ManageLotteryGame() {
         winningNumber: firstPrize,
         prizes: {
           second: prizeNumbers.second,
-          third:  prizeNumbers.third,
+          third: prizeNumbers.third,
           fourth: prizeNumbers.fourth,
-          fifth:  prizeNumbers.fifth,
+          fifth: prizeNumbers.fifth,
         },
         result_image_url,
       });
