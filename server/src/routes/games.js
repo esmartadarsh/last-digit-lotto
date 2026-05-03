@@ -33,8 +33,6 @@ router.get('/:slug', async (req, res) => {
           as: 'draws',
           where: { status: 'open' },
           required: false,
-          // ABC games have 2 time slots; lottery has 1
-          limit: 2,
           order: [['scheduled_at', 'ASC']],
         },
       ],

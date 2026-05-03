@@ -1,4 +1,21 @@
-export default function JackpotCard() {
+import { useState, useEffect } from "react";
+import formatTime from "@/utils/formatTime";
+
+export default function JackpotCard({ draw, onPlay }) {
+    const [now, setNow] = useState(Date.now());
+    useEffect(() => {
+        if (!draw) return;
+        const interval = setInterval(() => setNow(Date.now()), 1000);
+        return () => clearInterval(interval);
+    }, [draw]);
+
+    if (!draw) return null;
+
+    const timeLeft = Math.max(
+        Math.floor((new Date(draw.scheduled_at) - now) / 1000),
+        0
+    );
+
     return (
         <div className="px-4 -mt-3">
             <div
@@ -28,13 +45,13 @@ export default function JackpotCard() {
                         <div>
                             <p className="text-purple-300 text-[10px] font-bold uppercase tracking-widest mb-1">Jackpot Prize</p>
                             <div className="shimmer-gold text-[44px] font-black tracking-tighter leading-none mb-1">
-                                ₹50,000
+                                ₹1 Crore
                             </div>
                             <div className="flex items-center gap-2 mt-2">
                                 <span className="text-purple-300 text-xs">⏱ Ends in</span>
                                 <span className="px-2.5 py-1 rounded-lg font-mono font-black text-xs text-white"
                                     style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)' }}>
-                                    03:45:12
+                                    {formatTime(timeLeft)}
                                 </span>
                             </div>
                         </div>
@@ -42,9 +59,10 @@ export default function JackpotCard() {
                         <div className="flex flex-col items-end gap-2">
                             <div className="text-right">
                                 <p className="text-purple-300 text-[10px] font-bold">TICKET</p>
-                                <p className="text-white font-black text-lg">₹50</p>
+                                <p className="text-white font-black text-lg">₹{draw.ticket_price || '0'}</p>
                             </div>
                             <button
+                                onClick={onPlay}
                                 className="px-5 py-3 rounded-2xl font-black text-sm active:scale-95 transition-all"
                                 style={{
                                     background: 'linear-gradient(135deg, #f59e0b, #ef4444)',

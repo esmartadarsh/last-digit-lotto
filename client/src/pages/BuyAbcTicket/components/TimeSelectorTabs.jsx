@@ -14,7 +14,7 @@ export default function TimeSelectorTabs({ times = [], activeIndex = 0, onChange
                                 background: "#f0fdf4",
                             }
                             : {
-                                border: "2px solid transparent",
+                                border: "1px solid #597b5a82",
                                 background: "transparent",
                                 color: "#9ca3af",
                             }

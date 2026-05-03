@@ -39,6 +39,7 @@ export default function Home() {
     const [lotteryDraws, setLotteryDraws] = useState([]);
     const [abcDraws, setAbcDraws] = useState([]);
     const [loading, setLoading] = useState(true);
+    console.log(lotteryDraws, 'draw info')
 
     useEffect(() => {
         const fetchActiveDraws = async () => {
@@ -49,7 +50,26 @@ export default function Home() {
 
                     // Separate by game type
                     setLotteryDraws(draws.filter(d => d.game.type === 'lottery'));
-                    setAbcDraws(draws.filter(d => d.game.type === 'abc'));
+
+                    const abcDrawsRaw = draws.filter(d => d.game.type === 'abc');
+                    const uniqueAbcDraws = [];
+                    const seenGroups = new Set();
+
+                    for (const draw of abcDrawsRaw) {
+                        const dateObj = new Date(draw.scheduled_at);
+                        // Using local timezone date string (YYYY-MM-DD format equivalent)
+                        const year = dateObj.getFullYear();
+                        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                        const day = String(dateObj.getDate()).padStart(2, '0');
+                        const dateString = `${year}-${month}-${day}`;
+
+                        const key = `${draw.game.id}-${dateString}`;
+                        if (!seenGroups.has(key)) {
+                            uniqueAbcDraws.push({ ...draw, groupedDate: dateString });
+                            seenGroups.add(key);
+                        }
+                    }
+                    setAbcDraws(uniqueAbcDraws);
                 }
             } catch (err) {
                 console.error("Failed to fetch active draws:", err);
@@ -78,7 +98,12 @@ export default function Home() {
             }} />
 
             {/* ── Jackpot Card ── */}
-            <JackpotCard />
+            {lotteryDraws.length > 0 && (
+                <JackpotCard
+                    draw={lotteryDraws[0]}
+                    onPlay={() => navigate(`/lottery-ticket/${lotteryDraws[0].game.slug}`)}
+                />
+            )}
 
             {/* ── Quick Actions ── */}
             {/* <QuickActions /> */}
@@ -142,7 +167,7 @@ export default function Home() {
                                 key={draw.id}
                                 className="relative overflow-hidden rounded-2xl cursor-pointer active:scale-95 transition-all bg-gray-200"
                                 style={{ aspectRatio: '16/9' }}
-                                onClick={() => navigate(`/abc-ticket/${draw.game.slug}`)}
+                                onClick={() => navigate(`/abc-ticket/${draw.game.slug}?date=${draw.groupedDate}`)}
                             >
                                 {draw.banner_url || draw.game.banner_url ? (
                                     <img src={draw.banner_url || draw.game.banner_url} alt={draw.game.name} loading="lazy" className="w-full h-full object-cover" />

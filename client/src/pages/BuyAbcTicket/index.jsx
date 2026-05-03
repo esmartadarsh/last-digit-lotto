@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import useAuthStore from "../../store/useAuthStore";
 import api from "../../config/api";
@@ -56,13 +56,31 @@ export default function BuyAbcTicket() {
     const [activeTab, setActiveTab] = useState("buying");
     const [recentResults, setRecentResults] = useState([]);
 
+    const location = useLocation();
+    const queryParams = new URLSearchParams(location.search);
+    const targetDate = queryParams.get("date");
+
     useEffect(() => {
         const fetchGameAndDraws = async () => {
             try {
                 setLoading(true);
                 const res = await api.get(`/games/${game}`);
                 if (res.data.success && res.data.game.draws.length > 0) {
-                    setApiDraws(res.data.game.draws);
+                    let draws = res.data.game.draws;
+                    if (targetDate) {
+                        draws = draws.filter(d => {
+                            const dObj = new Date(d.scheduled_at);
+                            const y = dObj.getFullYear();
+                            const m = String(dObj.getMonth() + 1).padStart(2, '0');
+                            const day = String(dObj.getDate()).padStart(2, '0');
+                            return `${y}-${m}-${day}` === targetDate;
+                        });
+                    }
+                    if (draws.length > 0) {
+                        setApiDraws(draws);
+                    } else {
+                        setApiDraws(res.data.game.draws);
+                    }
                 }
             } catch (err) {
                 toast.error("Failed to load game details.");
@@ -71,7 +89,7 @@ export default function BuyAbcTicket() {
             }
         };
         fetchGameAndDraws();
-    }, [game]);
+    }, [game, targetDate]);
 
     useEffect(() => {
         if (activeTab === "history" && recentResults.length === 0) {
@@ -87,6 +105,17 @@ export default function BuyAbcTicket() {
 
     // time_slot is usually "1PM" or "8PM" from DB
     const [selectedTimeIndex, setSelectedTimeIndex] = useState(0);
+    const [pendingTimeIndex, setPendingTimeIndex] = useState(null);
+    const [showTimeChangeConfirm, setShowTimeChangeConfirm] = useState(false);
+
+    const handleTimeSlotChange = (newIndex) => {
+        if (newIndex !== selectedTimeIndex && selections.length > 0) {
+            setPendingTimeIndex(newIndex);
+            setShowTimeChangeConfirm(true);
+        } else {
+            setSelectedTimeIndex(newIndex);
+        }
+    };
 
     const activeDraw = apiDraws[selectedTimeIndex] || null;
     const secs = useCountdown(activeDraw?.scheduled_at);
@@ -236,15 +265,15 @@ export default function BuyAbcTicket() {
             />
 
             {/* Time selector tabs */}
-            {/* {apiDraws.length > 0 ? (
+            {apiDraws.length > 0 ? (
                 <TimeSelectorTabs
                     times={apiDraws.map((d) => d.time_slot || new Date(d.scheduled_at).toLocaleTimeString())}
                     activeIndex={selectedTimeIndex}
-                    onChange={setSelectedTimeIndex}
+                    onChange={handleTimeSlotChange}
                 />
             ) : (
                 <div className="p-4 text-center text-red-500 font-bold">No active draws for this game.</div>
-            )} */}
+            )}
 
             {/* Draw banner */}
             <DrawBanner
@@ -293,6 +322,41 @@ export default function BuyAbcTicket() {
                 selections={selections}
                 onRemoveSelection={removeSelection}
             />
+
+            {/* Time Change Confirmation Modal */}
+            {showTimeChangeConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+                    <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">Change Time Slot?</h3>
+                        <p className="text-gray-600 text-sm mb-6">
+                            Changing the time slot will clear all items currently in your cart. Do you want to proceed?
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                className="flex-1 py-3 rounded-xl font-bold text-gray-700 bg-gray-100 active:scale-95 transition-transform"
+                                onClick={() => {
+                                    setShowTimeChangeConfirm(false);
+                                    setPendingTimeIndex(null);
+                                }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className="flex-1 py-3 rounded-xl font-bold text-white bg-red-500 active:scale-95 transition-transform"
+                                onClick={() => {
+                                    setSelections([]);
+                                    setSelectedTimeIndex(pendingTimeIndex);
+                                    setShowTimeChangeConfirm(false);
+                                    setPendingTimeIndex(null);
+                                    toast.success("Time changed. Cart has been cleared.");
+                                }}
+                            >
+                                Proceed
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* How to Play modal */}
             {howToPlayOpen && (

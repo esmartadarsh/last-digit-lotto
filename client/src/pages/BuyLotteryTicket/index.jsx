@@ -213,7 +213,7 @@ export default function BuyLotteryTicket() {
 
   return (
     <div
-      className="relative flex flex-col min-h-screen pb-20"
+      className="relative flex flex-col min-h-screen"
       style={{ background: "#f0f2f8", fontFamily: "'Inter', sans-serif" }}
     >
       <Header title={game ? game.toUpperCase() : "Lottery"} />

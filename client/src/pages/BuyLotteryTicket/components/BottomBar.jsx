@@ -1,13 +1,8 @@
 export default function BottomBar({ ticketsCount, totalCost, balance, onPurchase, isPurchasing }) {
     return (
         <div
-            className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-between px-5 py-4"
-            style={{
-                background: "rgba(255,255,255,0.97)",
-                backdropFilter: "blur(16px)",
-                borderTop: "1px solid #f3f4f6",
-                boxShadow: "0 -8px 32px rgba(0,0,0,0.08)",
-            }}
+            className="fixed bottom-0 left-0 right-0 z-30 mx-auto px-5 py-4 flex items-center justify-between"
+            style={{ maxWidth: '430px', background: "rgba(255,255,255,0.97)", backdropFilter: "blur(16px)", borderTop: "1px solid #f3f4f6", boxShadow: "0 -8px 32px rgba(0,0,0,0.08)" }}
         >
             {/* Left: ticket count + balance */}
             <div>
@@ -50,7 +45,7 @@ export default function BottomBar({ ticketsCount, totalCost, balance, onPurchase
                 {isPurchasing ? (
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                 ) : (
-                    "⚡ QUICK BUY"
+                    "BUY NOW"
                 )}
             </button>
         </div>

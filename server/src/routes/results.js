@@ -18,6 +18,7 @@ router.get('/lottery/recent', async (req, res) => {
         {
           model: Draw,
           as: 'draw',
+          required: !!game,
           include: [{ model: Game, as: 'game', where: game ? { slug: game } : undefined }],
         },
       ],
@@ -44,6 +45,7 @@ router.get('/abc/recent', async (req, res) => {
         {
           model: Draw,
           as: 'draw',
+          required: !!game,
           include: [{ model: Game, as: 'game', where: game ? { slug: game } : undefined }],
         },
       ],
