@@ -110,7 +110,7 @@ export default function ManageAbcGame() {
         toast.loading('Uploading banner...', { id: 'banner' });
         const timeStr = drawHour.replace(/:/g, '-');
         const drawTempId = `abc_${drawDate}_${timeStr}_${Date.now()}`;
-        const storageRef = ref(storage, `draw-banners/adb/${drawTempId}.webp`);
+        const storageRef = ref(storage, `draw-banners/abc/${drawTempId}.webp`);
         const snapshot = await uploadBytes(storageRef, bannerBlob, { contentType: 'image/webp' });
         banner_url = await getDownloadURL(snapshot.ref);
         toast.dismiss('banner');
