@@ -58,6 +58,9 @@ router.post(
         if (!draw || draw.status !== 'open') {
           throw Object.assign(new Error('This draw is not open for purchases'), { status: 400 });
         }
+        if (new Date() >= new Date(draw.scheduled_at)) {
+          throw Object.assign(new Error('This draw timing has been reached. Ticket purchase is closed.'), { status: 400 });
+        }
         if (draw.game.type !== 'lottery') {
           throw Object.assign(new Error('This is not a lottery draw'), { status: 400 });
         }

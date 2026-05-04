@@ -13,6 +13,7 @@ import GamesList from './components/GamesList'
 import DrawForm from './components/DrawForm'
 import DrawsTable from './components/DrawsTable'
 import ResolveModal from './components/ResolveModal'
+import EditResolveModal from './components/EditResolveModal'
 
 // Parse pasted text into valid number chips of exact `digits` length
 function parsePastedNumbers(text, digits) {
@@ -55,7 +56,9 @@ export default function ManageLotteryGame() {
   const [showDrawForm, setShowDrawForm] = useState(false);
   const [selectedGameId, setSelectedGameId] = useState('');
   const [drawDate, setDrawDate] = useState('');
-  const [drawHour, setDrawHour] = useState('');
+  const [drawHour12, setDrawHour12] = useState('');
+  const [drawMinute, setDrawMinute] = useState('');
+  const [drawAmPm, setDrawAmPm] = useState('PM');
   const [ticketPrice, setTicketPrice] = useState('');
   const [creatingDraw, setCreatingDraw] = useState(false);
 
@@ -67,6 +70,7 @@ export default function ManageLotteryGame() {
 
   // ── Resolve / Announce Result ──
   const [resolveDraw, setResolveDraw] = useState(null);
+  const [editResolveDraw, setEditResolveDraw] = useState(null);
   const [resolving, setResolving] = useState(false);
   // 1st prize — 8 individual boxes
   const [firstBoxes, setFirstBoxes] = useState(Array(8).fill(''));
@@ -127,7 +131,15 @@ export default function ManageLotteryGame() {
   // ── Create Draw ──
   const handleCreateDraw = async (e) => {
     e.preventDefault();
-    if (!selectedGameId || !drawDate || !drawHour || !ticketPrice) return toast.error('All fields are required');
+    if (!selectedGameId || !drawDate || !drawHour12 || !drawMinute || !ticketPrice) return toast.error('All fields are required');
+    
+    let hours24 = parseInt(drawHour12, 10);
+    if (drawAmPm === 'PM' && hours24 !== 12) hours24 += 12;
+    if (drawAmPm === 'AM' && hours24 === 12) hours24 = 0;
+    
+    const formattedHour24 = hours24.toString().padStart(2, '0');
+    const formattedMinute = drawMinute.toString().padStart(2, '0');
+    const drawHour = `${formattedHour24}:${formattedMinute}`;
     // Combine date + hour slot into ISO-compatible local datetime string
     const scheduled_at = `${drawDate}T${drawHour}:00`;
     setCreatingDraw(true);
@@ -151,7 +163,9 @@ export default function ManageLotteryGame() {
         { game_id: parseInt(selectedGameId), scheduled_at, ticket_price: parseFloat(ticketPrice), time_slot: drawHour, banner_url }
       );
       toast.success('Draw created successfully!');
-      setSelectedGameId(''); setDrawDate(''); setDrawHour(''); setTicketPrice('');
+      setSelectedGameId(''); setDrawDate(''); 
+      setDrawHour12(''); setDrawMinute(''); setDrawAmPm('PM');
+      setTicketPrice('');
       setBannerBlob(null); setBannerPreview(null);
       setShowDrawForm(false);
       fetchGames();
@@ -262,11 +276,47 @@ export default function ManageLotteryGame() {
   };
   const closeResolveModal = () => {
     setResolveDraw(null);
+    setEditResolveDraw(null);
     setFirstBoxes(Array(8).fill(''));
     setPrizeNumbers({ second: [], third: [], fourth: [], fifth: [] });
     setPasteDraft({ second: '', third: '', fourth: '', fifth: '' });
     setResultImageFile(null);
     setResultImagePreview(null);
+  };
+
+  // ── Open Edit Result Modal ──
+  const openEditResolveModal = async (draw) => {
+    toast.loading('Fetching existing result...', { id: 'fetch-res' });
+    try {
+      const res = await api.get(`/results/lottery/${draw.id}`);
+      if (res.data.success) {
+        const result = res.data.result;
+        
+        // Populate 1st prize
+        if (result.winning_number) {
+           setFirstBoxes(result.winning_number.split(''));
+        }
+
+        // Populate other prizes
+        if (result.prizes) {
+          setPrizeNumbers({
+            second: result.prizes.second || [],
+            third: result.prizes.third || [],
+            fourth: result.prizes.fourth || [],
+            fifth: result.prizes.fifth || [],
+          });
+        }
+
+        if (result.result_image_url) {
+           setResultImagePreview(result.result_image_url);
+        }
+
+        setEditResolveDraw(draw);
+        toast.dismiss('fetch-res');
+      }
+    } catch (err) {
+      toast.error('Failed to fetch existing result', { id: 'fetch-res' });
+    }
   };
 
   // ── Submit Result ──
@@ -313,6 +363,50 @@ export default function ManageLotteryGame() {
     }
   };
 
+  // ── Submit Edit Result ──
+  const handleEditAnnounceResult = async () => {
+    const firstPrize = firstBoxes.join('').toUpperCase();
+    if (firstPrize.length !== 8) return toast.error('Fill all 8 boxes for 1st Prize');
+    for (const cfg of PRIZE_CONFIG) {
+      if (prizeNumbers[cfg.key].length !== cfg.count)
+        return toast.error(`${cfg.label} needs exactly ${cfg.count} numbers (have ${prizeNumbers[cfg.key].length})`);
+    }
+    setResolving(true);
+    try {
+      let result_image_url = resultImagePreview; // Keep existing if not changed
+      // Upload new result image to Firebase Storage if selected
+      if (resultImageFile) {
+        toast.loading('Uploading result image...', { id: 'result-img' });
+        const scheduledDate = new Date(editResolveDraw.scheduled_at);
+        const dateStr = scheduledDate.toISOString().split('T')[0];
+        const timeStr = scheduledDate.toTimeString().split(' ')[0].replace(/:/g, '-');
+        const imgRef = ref(storage, `results/result_lottery_${editResolveDraw.id}_${dateStr}_${timeStr}_${Date.now()}.webp`);
+        const snapshot = await uploadBytes(imgRef, resultImageFile, { contentType: resultImageFile.type });
+        result_image_url = await getDownloadURL(snapshot.ref);
+        toast.dismiss('result-img');
+      }
+
+      await api.put(`/admin/results/lottery`, {
+        drawId: editResolveDraw.id,
+        winningNumber: firstPrize,
+        prizes: {
+          second: prizeNumbers.second,
+          third: prizeNumbers.third,
+          fourth: prizeNumbers.fourth,
+          fifth: prizeNumbers.fifth,
+        },
+        result_image_url,
+      });
+      toast.success('Result updated successfully!');
+      closeResolveModal();
+      fetchGames();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update result');
+    } finally {
+      setResolving(false);
+    }
+  };
+
   return (
     <div className="space-y-8 max-w-[1200px] w-full mx-auto">
 
@@ -346,8 +440,12 @@ export default function ManageLotteryGame() {
         setSelectedGameId={setSelectedGameId}
         drawDate={drawDate}
         setDrawDate={setDrawDate}
-        drawHour={drawHour}
-        setDrawHour={setDrawHour}
+        drawHour12={drawHour12}
+        setDrawHour12={setDrawHour12}
+        drawMinute={drawMinute}
+        setDrawMinute={setDrawMinute}
+        drawAmPm={drawAmPm}
+        setDrawAmPm={setDrawAmPm}
         ticketPrice={ticketPrice}
         setTicketPrice={setTicketPrice}
 
@@ -372,6 +470,7 @@ export default function ManageLotteryGame() {
         onCloseDraw={handleCloseDraw}
         onDeleteDraw={handleDeleteDraw}
         onAnnounce={openResolveModal}
+        onEditAnnounce={openEditResolveModal}
       />
 
       {/* ── Multi-Prize Result Announcement Modal ── */}
@@ -379,6 +478,29 @@ export default function ManageLotteryGame() {
         draw={resolveDraw}
         onClose={closeResolveModal}
         onSubmit={handleAnnounceResult}
+        resolving={resolving}
+
+        firstBoxes={firstBoxes}
+        firstRefs={firstRefs}
+        handleFirstBoxChange={handleFirstBoxChange}
+        handleFirstBoxKeyDown={handleFirstBoxKeyDown}
+
+        prizeNumbers={prizeNumbers}
+        pasteDraft={pasteDraft}
+        setPasteDraft={setPasteDraft}
+        handlePasteDraft={handlePasteDraft}
+        removeChip={removeChip}
+
+        resultImagePreview={resultImagePreview}
+        onResultImageSelect={handleResultImageSelect}
+        onResultImageClear={handleResultImageClear}
+      />
+
+      {/* ── Edit Result Announcement Modal ── */}
+      <EditResolveModal
+        draw={editResolveDraw}
+        onClose={closeResolveModal}
+        onSubmit={handleEditAnnounceResult}
         resolving={resolving}
 
         firstBoxes={firstBoxes}

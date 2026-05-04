@@ -239,6 +239,56 @@ router.post(
 );
 
 /**
+ * PUT /api/admin/results/lottery
+ * Edit an already announced lottery result.
+ */
+router.put(
+  '/results/lottery',
+  [
+    body('drawId').isUUID(),
+    body('winningNumber')
+      .matches(/^[0-9]{2}[A-Z][0-9]{5}$/i)
+      .withMessage('Format: [NN][L][NNNNN] e.g. 46A42830'),
+    body('prizes').isObject().withMessage('prizes must be an object'),
+    body('prizes.second').isArray({ min: 10, max: 10 }).withMessage('2nd prize needs exactly 10 numbers'),
+    body('prizes.third').isArray({ min: 10, max: 10 }).withMessage('3rd prize needs exactly 10 numbers'),
+    body('prizes.fourth').isArray({ min: 10, max: 10 }).withMessage('4th prize needs exactly 10 numbers'),
+    body('prizes.fifth').isArray({ min: 100, max: 100 }).withMessage('5th prize needs exactly 100 numbers'),
+    body('result_image_url').optional({ nullable: true }).isString(),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
+
+    try {
+      const { drawId, winningNumber, prizes, result_image_url } = req.body;
+      
+      const { LotteryResult } = require('../models');
+      const { syncResultToFirestore } = require('../services/firestoreSync');
+
+      const result = await LotteryResult.findOne({ where: { draw_id: drawId } });
+      if (!result) return res.status(404).json({ success: false, message: 'Result not found' });
+
+      await result.update({
+        winning_number: winningNumber.toUpperCase(),
+        prizes,
+        result_image_url: result_image_url || null,
+      });
+
+      // Update firestore realtime db too
+      await syncResultToFirestore(drawId, { type: 'lottery', winningNumber: winningNumber.toUpperCase() });
+
+      return res.json({
+        success: true,
+        message: 'Result updated successfully. Note: Winner calculations/balances are not automatically reversed.',
+      });
+    } catch (err) {
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+);
+
+/**
  * POST /api/admin/results/abc
  * Announce A, B, C digits → resolves all ABC tickets.
  */
@@ -270,6 +320,45 @@ router.post(
       });
     } catch (err) {
       return res.status(err.status || 500).json({ success: false, message: err.message });
+    }
+  }
+);
+
+/**
+ * PUT /api/admin/results/abc
+ * Edit an already announced ABC result.
+ */
+router.put(
+  '/results/abc',
+  [
+    body('drawId').isUUID(),
+    body('a').isInt({ min: 0, max: 9 }),
+    body('b').isInt({ min: 0, max: 9 }),
+    body('c').isInt({ min: 0, max: 9 }),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
+
+    try {
+      const { drawId, a, b, c } = req.body;
+      const { AbcResult } = require('../models');
+      const { syncResultToFirestore } = require('../services/firestoreSync');
+
+      const result = await AbcResult.findOne({ where: { draw_id: drawId } });
+      if (!result) return res.status(404).json({ success: false, message: 'Result not found' });
+
+      await result.update({ a, b, c });
+
+      // Update firestore realtime db too
+      await syncResultToFirestore(drawId, { type: 'abc', result: { a, b, c } });
+
+      return res.json({
+        success: true,
+        message: 'ABC Result updated successfully. Note: Winner calculations/balances are not automatically reversed.',
+      });
+    } catch (err) {
+      return res.status(500).json({ success: false, message: err.message });
     }
   }
 );

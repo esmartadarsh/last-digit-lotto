@@ -37,10 +37,10 @@ async function start() {
       console.log('✅ Created default admin user (9667479527 / 123456)');
     }
 
-    // ── Cron: auto-close expired draws every minute
-    cron.schedule('* * * * *', async () => {
-      await closeExpiredDraws();
-    });
+    // ── Cron: auto-close expired draws every minute (DISABLED as per request)
+    // cron.schedule('* * * * *', async () => {
+    //   await closeExpiredDraws();
+    // });
 
     // ── Cron: auto-create daily draws at midnight
     cron.schedule('0 0 * * *', async () => {

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import api from "../../config/api"
 import formatTime from "@/utils/formatTime"
+import formatDate12Hour, { formatTime12Hour } from "@/utils/formatDate12Hour"
 import useAuthStore from "../../store/useAuthStore"
 import QuickActions from "./components/QuickActions"
 import RecentWinners from "./components/RecentWinners"
@@ -180,7 +181,7 @@ export default function Home() {
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
                                 <div className="absolute bottom-[24px] left-[6px] text-white text-[12px] font-bold">
-                                    {draw.game.name} {draw.time_slot && `- ${draw.time_slot}`}
+                                    {draw.game.name} {draw.time_slot && `- ${formatTime12Hour(draw.time_slot)}`}
                                 </div>
 
                                 <div className="absolute bottom-2 left-2 px-2 py-1 rounded-lg bg-black/60 text-white text-[10px] font-mono font-bold">

@@ -12,8 +12,12 @@ export default function DrawForm({
     setSelectedGameId,
     drawDate,
     setDrawDate,
-    drawHour,
-    setDrawHour,
+    drawHour12,
+    setDrawHour12,
+    drawMinute,
+    setDrawMinute,
+    drawAmPm,
+    setDrawAmPm,
     ticketPrice,
     setTicketPrice,
 
@@ -79,13 +83,28 @@ export default function DrawForm({
                     {/* Time */}
                     <div>
                         <label className="label">Time</label>
-                        <input
-                            type="time"
-                            value={drawHour}
-                            onChange={(e) => setDrawHour(e.target.value)}
-                            className="input"
-                            required
-                        />
+                        <div className="flex gap-2">
+                            <select value={drawHour12} onChange={e => setDrawHour12(e.target.value)} required
+                                className="input px-2">
+                                <option value="">HH</option>
+                                {[...Array(12)].map((_, i) => (
+                                    <option key={i + 1} value={i + 1}>{String(i + 1).padStart(2, '0')}</option>
+                                ))}
+                            </select>
+                            <span className="text-white font-bold self-center">:</span>
+                            <select value={drawMinute} onChange={e => setDrawMinute(e.target.value)} required
+                                className="input px-2">
+                                <option value="">MM</option>
+                                {[...Array(60)].map((_, i) => (
+                                    <option key={i} value={i}>{String(i).padStart(2, '0')}</option>
+                                ))}
+                            </select>
+                            <select value={drawAmPm} onChange={e => setDrawAmPm(e.target.value)}
+                                className="input px-2">
+                                <option value="AM">AM</option>
+                                <option value="PM">PM</option>
+                            </select>
+                        </div>
                     </div>
 
                     {/* Price */}

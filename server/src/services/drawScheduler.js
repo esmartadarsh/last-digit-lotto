@@ -8,6 +8,7 @@ const { syncDrawStatusToFirestore, createDrawInFirestore } = require('./firestor
  * Closes any draw whose scheduled_at time has passed and is still 'open'.
  */
 async function closeExpiredDraws() {
+  console.log('closing unnecesery draws')
   try {
     const expired = await Draw.findAll({
       where: {

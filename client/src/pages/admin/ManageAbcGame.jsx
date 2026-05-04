@@ -32,7 +32,9 @@ export default function ManageAbcGame() {
   const [showDrawForm, setShowDrawForm] = useState(false);
   const [selectedGameId, setSelectedGameId] = useState('');
   const [drawDate, setDrawDate] = useState('');
-  const [drawHour, setDrawHour] = useState('');
+  const [drawHour12, setDrawHour12] = useState('');
+  const [drawMinute, setDrawMinute] = useState('');
+  const [drawAmPm, setDrawAmPm] = useState('PM'); // Defaulting to PM as 1PM/8PM are common
   const [singleDigitPrice, setSingleDigitPrice] = useState('');
   const [doubleDigitPrice, setDoubleDigitPrice] = useState('');
   const [tripleDigitPrice, setTripleDigitPrice] = useState('');
@@ -46,6 +48,7 @@ export default function ManageAbcGame() {
 
   // Resolve Draw
   const [resolveDraw, setResolveDraw] = useState(null);
+  const [editResolveDraw, setEditResolveDraw] = useState(null);
   const [digitA, setDigitA] = useState('');
   const [digitB, setDigitB] = useState('');
   const [digitC, setDigitC] = useState('');
@@ -97,9 +100,17 @@ export default function ManageAbcGame() {
   // ── Create Draw ──
   const handleCreateDraw = async (e) => {
     e.preventDefault();
-    if (!selectedGameId || !drawDate || !drawHour || !singleDigitPrice || !doubleDigitPrice || !tripleDigitPrice) {
+    if (!selectedGameId || !drawDate || !drawHour12 || !drawMinute || !singleDigitPrice || !doubleDigitPrice || !tripleDigitPrice) {
       return toast.error('All fields are required including all three digit prices');
     }
+
+    let hours24 = parseInt(drawHour12, 10);
+    if (drawAmPm === 'PM' && hours24 !== 12) hours24 += 12;
+    if (drawAmPm === 'AM' && hours24 === 12) hours24 = 0;
+    
+    const formattedHour24 = hours24.toString().padStart(2, '0');
+    const formattedMinute = drawMinute.toString().padStart(2, '0');
+    const drawHour = `${formattedHour24}:${formattedMinute}`;
     const scheduled_at = `${drawDate}T${drawHour}:00`;
     setCreatingDraw(true);
     try {
@@ -129,7 +140,8 @@ export default function ManageAbcGame() {
         }
       );
       toast.success('Draw created successfully!');
-      setSelectedGameId(''); setDrawDate(''); setDrawHour('');
+      setSelectedGameId(''); setDrawDate(''); 
+      setDrawHour12(''); setDrawMinute(''); setDrawAmPm('PM');
       setSingleDigitPrice(''); setDoubleDigitPrice(''); setTripleDigitPrice('');
       setBannerBlob(null); setBannerPreview(null);
       setShowDrawForm(false);
@@ -166,18 +178,6 @@ export default function ManageAbcGame() {
     }
   };
 
-  // ── Toggle Game Active Status (commented out) ──
-  // const handleToggleGame = async (gameId, currentStatus) => {
-  //   if (!window.confirm(`Are you sure you want to make this game ${currentStatus ? 'inactive' : 'active'}?`)) return;
-  //   try {
-  //     await api.put(`/admin/games/${gameId}/toggle-active`);
-  //     toast.success(`Game marked as ${currentStatus ? 'inactive' : 'active'}!`);
-  //     fetchData();
-  //   } catch (err) {
-  //     toast.error(err.response?.data?.message || 'Failed to toggle game status');
-  //   }
-  // };
-
   // ── Delete Game ──
   const handleDeleteGame = async (gameId) => {
     if (!window.confirm('Are you sure you want to delete this game? To delete a game, it must NOT have any active draws.')) return;
@@ -210,6 +210,45 @@ export default function ManageAbcGame() {
       fetchData();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to resolve draw');
+    } finally {
+      setResolving(false);
+    }
+  };
+
+  // ── Edit Result ──
+  const openEditResolveModal = async (draw) => {
+    toast.loading('Fetching existing result...', { id: 'fetch-abc' });
+    try {
+      const res = await api.get(`/results/abc/${draw.id}`);
+      if (res.data.success) {
+        const result = res.data.result;
+        setDigitA(result.a !== undefined && result.a !== null ? String(result.a) : '');
+        setDigitB(result.b !== undefined && result.b !== null ? String(result.b) : '');
+        setDigitC(result.c !== undefined && result.c !== null ? String(result.c) : '');
+        setEditResolveDraw(draw);
+        toast.dismiss('fetch-abc');
+      }
+    } catch (err) {
+      toast.error('Failed to fetch existing result', { id: 'fetch-abc' });
+    }
+  };
+
+  const handleEditResolveDraw = async () => {
+    if (digitA === '' || digitB === '' || digitC === '') return toast.error('Enter all 3 digits');
+    setResolving(true);
+    try {
+      await api.put(`/admin/results/abc`, {
+        drawId: editResolveDraw.id,
+        a: parseInt(digitA, 10),
+        b: parseInt(digitB, 10),
+        c: parseInt(digitC, 10),
+      });
+      toast.success('ABC Result updated successfully!');
+      setEditResolveDraw(null);
+      setDigitA(''); setDigitB(''); setDigitC('');
+      fetchData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update result');
     } finally {
       setResolving(false);
     }
@@ -302,8 +341,28 @@ export default function ManageAbcGame() {
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Time</label>
-              <input type="time" value={drawHour} onChange={e => setDrawHour(e.target.value)} required
-                className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-red-500 transition-colors" />
+              <div className="flex gap-2">
+                <select value={drawHour12} onChange={e => setDrawHour12(e.target.value)} required
+                  className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-2 py-3 text-white focus:outline-none focus:border-red-500 transition-colors">
+                  <option value="">HH</option>
+                  {[...Array(12)].map((_, i) => (
+                    <option key={i + 1} value={i + 1}>{String(i + 1).padStart(2, '0')}</option>
+                  ))}
+                </select>
+                <span className="text-white font-bold self-center">:</span>
+                <select value={drawMinute} onChange={e => setDrawMinute(e.target.value)} required
+                  className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-2 py-3 text-white focus:outline-none focus:border-red-500 transition-colors">
+                  <option value="">MM</option>
+                  {[...Array(60)].map((_, i) => (
+                    <option key={i} value={i}>{String(i).padStart(2, '0')}</option>
+                  ))}
+                </select>
+                <select value={drawAmPm} onChange={e => setDrawAmPm(e.target.value)}
+                  className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-2 py-3 text-white focus:outline-none focus:border-red-500 transition-colors">
+                  <option value="AM">AM</option>
+                  <option value="PM">PM</option>
+                </select>
+              </div>
             </div>
 
             {/* ── ABC-specific prices ── */}
@@ -483,7 +542,13 @@ export default function ManageAbcGame() {
                         </div>
                       )}
                       {draw.status === 'completed' && (
-                        <span className="text-slate-500 italic text-xs">Completed</span>
+                        <div className="flex gap-2 items-center">
+                            <span className="text-slate-500 italic text-xs">Completed</span>
+                            <button onClick={() => openEditResolveModal(draw)}
+                                className="text-indigo-400 font-medium px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 transition-colors text-xs">
+                                Edit Result
+                            </button>
+                        </div>
                       )}
                     </div>
                   </td>
@@ -553,6 +618,59 @@ export default function ManageAbcGame() {
           onCropped={(blob, preview) => { setBannerBlob(blob); setBannerPreview(preview); setShowCropper(false); }}
           onCancel={() => setShowCropper(false)}
         />
+      )}
+
+      {/* ── Edit Resolve Modal ── */}
+      {editResolveDraw && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-[#1e293b] border border-[#334155] p-8 rounded-2xl max-w-md w-full shadow-2xl">
+            <h2 className="text-xl font-bold text-white mb-1">Edit ABC Result</h2>
+            <p className="text-sm text-slate-400 mb-6">
+              Game: <strong className="text-white">{editResolveDraw.game?.name}</strong><br />
+              Scheduled: {new Date(editResolveDraw.scheduled_at).toLocaleString('en-IN')}
+            </p>
+
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Enter Winning Digits (0-9)</p>
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              {[
+                { label: 'Digit A', val: digitA, set: setDigitA },
+                { label: 'Digit B', val: digitB, set: setDigitB },
+                { label: 'Digit C', val: digitC, set: setDigitC },
+              ].map(({ label, val, set }) => (
+                <div key={label} className="flex flex-col items-center">
+                  <label className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">{label}</label>
+                  <input
+                    type="number" min="0" max="9" maxLength={1}
+                    value={val}
+                    onChange={e => set(e.target.value.slice(-1))}
+                    className="w-full text-center bg-[#0f172a] border border-slate-700 focus:border-emerald-500 rounded-xl px-2 py-4 text-white font-mono text-3xl font-black focus:outline-none transition-colors"
+                    placeholder="—"
+                  />
+                </div>
+              ))}
+            </div>
+
+            {digitA !== '' && digitB !== '' && digitC !== '' && (
+              <div className="mb-6 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-center">
+                <p className="text-xs text-slate-400 mb-1">Winning Combination</p>
+                <p className="text-3xl font-black text-indigo-400 tracking-widest font-mono">
+                  A={digitA} · B={digitB} · C={digitC}
+                </p>
+              </div>
+            )}
+
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => { setEditResolveDraw(null); setDigitA(''); setDigitB(''); setDigitC(''); }}
+                className="px-5 py-2.5 font-medium text-slate-400 hover:text-white transition-colors">
+                Cancel
+              </button>
+              <button onClick={handleEditResolveDraw} disabled={resolving}
+                className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-xl font-semibold transition-colors disabled:opacity-60 shadow-lg shadow-indigo-500/20">
+                {resolving ? 'Updating...' : 'Update Result'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import formatTime from "@/utils/formatTime";
+import formatDate12Hour from "@/utils/formatDate12Hour";
 import toast from "react-hot-toast";
 import useAuthStore from "../../store/useAuthStore";
 import api from "../../config/api";
@@ -54,6 +55,8 @@ export default function BuyLotteryTicket() {
 
   /* ── About accordion ── */
   const [aboutOpen, setAboutOpen] = useState(false);
+
+  const [showTimeAlert, setShowTimeAlert] = useState(false);
 
   useEffect(() => {
     const fetchGameAndDraw = async () => {
@@ -162,6 +165,13 @@ export default function BuyLotteryTicket() {
       return;
     }
     if (!activeDraw) return toast.error("No active draw available");
+    
+    // Time check verification
+    if (new Date() >= new Date(activeDraw.scheduled_at)) {
+      setShowTimeAlert(true);
+      return;
+    }
+
     if (cartItems.length === 0) return toast.error("Cart is empty");
     // TODO: re-enable balance check once Razorpay top-up is wired
     // if (parseFloat(user.balance) < totalCost) return toast.error("Insufficient balance!");
@@ -221,7 +231,7 @@ export default function BuyLotteryTicket() {
       <DrawBanner
         username={user?.name || "Player"}
         drawNumber={`NO.${activeDraw?.id.substring(0, 8)}`}
-        drawTime={activeDraw ? new Date(activeDraw.scheduled_at).toLocaleString('en-GB') : "N/A"}
+        drawTime={activeDraw ? formatDate12Hour(activeDraw.scheduled_at) : "N/A"}
         bannerUrl={activeDraw?.banner_url}
       />
 
@@ -266,6 +276,27 @@ export default function BuyLotteryTicket() {
         onPurchase={handlePurchase}
         isPurchasing={isPurchasing}
       />
+
+      {/* Time Alert Modal */}
+      {showTimeAlert && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-xs shadow-2xl text-center transform scale-100 transition-all">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-3xl">⏰</span>
+            </div>
+            <h3 className="text-xl font-black text-gray-900 mb-2">Time's Up!</h3>
+            <p className="text-gray-600 text-sm mb-6 font-medium">
+              This draw timing has been reached. You can no longer purchase tickets for this draw.
+            </p>
+            <button
+              onClick={() => setShowTimeAlert(false)}
+              className="w-full py-3.5 rounded-xl font-black text-white bg-red-600 active:scale-95 transition-transform"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

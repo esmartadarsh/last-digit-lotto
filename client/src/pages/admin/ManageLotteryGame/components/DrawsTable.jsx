@@ -1,6 +1,6 @@
 import React from 'react'
 import { STATUS_COLORS } from '@/data.js';
-export default function DrawsTable({ draws, loading, onCloseDraw, onDeleteDraw, onAnnounce }) {
+export default function DrawsTable({ draws, loading, onCloseDraw, onDeleteDraw, onAnnounce, onEditAnnounce }) {
     return (
         <div>
             <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -80,7 +80,13 @@ export default function DrawsTable({ draws, loading, onCloseDraw, onDeleteDraw, 
                                             </div>
                                         )}
                                         {draw.status === 'completed' && (
-                                            <span className="text-slate-500 italic text-xs">Completed</span>
+                                            <div className="flex gap-2 items-center">
+                                                <span className="text-slate-500 italic text-xs">Completed</span>
+                                                <button onClick={() => onEditAnnounce(draw)}
+                                                    className="text-indigo-400 font-medium px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 transition-colors text-xs">
+                                                    Edit Result
+                                                </button>
+                                            </div>
                                         )}
                                     </div>
                                 </td>

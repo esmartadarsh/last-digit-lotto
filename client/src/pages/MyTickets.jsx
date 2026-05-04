@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import api from "../config/api"
 import useAuthStore from "../store/useAuthStore"
+import formatDate12Hour from "@/utils/formatDate12Hour"
 
 export default function MyTickets() {
   const navigate = useNavigate();
@@ -165,7 +166,7 @@ export default function MyTickets() {
                 {/* Body */}
                 <div className="px-4 py-3">
                   <p className="text-[11px] text-gray-400 font-medium mb-3">
-                    Draw: {new Date(ticket.uiTime).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}
+                    Draw: {formatDate12Hour(ticket.uiTime)}
                   </p>
 
                   <div className="flex justify-between items-center">

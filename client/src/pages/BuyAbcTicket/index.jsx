@@ -3,6 +3,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import useAuthStore from "../../store/useAuthStore";
 import api from "../../config/api";
+import formatDate12Hour, { formatTime12Hour } from "@/utils/formatDate12Hour";
 import Header from "./components/Header";
 import DrawBanner from "./components/DrawBanner";
 import TimeSelectorTabs from "./components/TimeSelectorTabs";
@@ -55,6 +56,8 @@ export default function BuyAbcTicket() {
 
     const [activeTab, setActiveTab] = useState("buying");
     const [recentResults, setRecentResults] = useState([]);
+    
+    const [showTimeAlert, setShowTimeAlert] = useState(false);
 
     const location = useLocation();
     const queryParams = new URLSearchParams(location.search);
@@ -201,6 +204,13 @@ export default function BuyAbcTicket() {
             return;
         }
         if (!activeDraw) return toast.error("No active draw available");
+
+        // Time check verification
+        if (new Date() >= new Date(activeDraw.scheduled_at)) {
+            setShowTimeAlert(true);
+            return;
+        }
+
         if (selections.length === 0) return toast.error("Cart is empty");
         // TODO: re-enable balance check once Razorpay top-up is wired
         // if (parseFloat(user.balance) < totalCost) return toast.error("Insufficient balance!");
@@ -267,7 +277,7 @@ export default function BuyAbcTicket() {
             {/* Time selector tabs */}
             {apiDraws.length > 0 ? (
                 <TimeSelectorTabs
-                    times={apiDraws.map((d) => d.time_slot || new Date(d.scheduled_at).toLocaleTimeString())}
+                    times={apiDraws.map((d) => d.time_slot ? formatTime12Hour(d.time_slot) : formatDate12Hour(d.scheduled_at).split(',')[1]?.trim() || '')}
                     activeIndex={selectedTimeIndex}
                     onChange={handleTimeSlotChange}
                 />
@@ -277,8 +287,8 @@ export default function BuyAbcTicket() {
 
             {/* Draw banner */}
             <DrawBanner
-                title={`ABC-${game ? game.toUpperCase() : ''} ${activeDraw?.time_slot || ''}`}
-                date={activeDraw ? new Date(activeDraw.scheduled_at).toLocaleDateString('en-GB') : "N/A"}
+                title={`ABC-${game ? game.toUpperCase() : ''} ${activeDraw?.time_slot ? formatTime12Hour(activeDraw.time_slot) : ''}`}
+                date={activeDraw ? formatDate12Hour(activeDraw.scheduled_at).split(',')[0] : "N/A"}
                 digits={digits}
                 balls={[
                     { label: "5", color: "linear-gradient(135deg, #dc2626, #f87171)" },
@@ -361,6 +371,27 @@ export default function BuyAbcTicket() {
             {/* How to Play modal */}
             {howToPlayOpen && (
                 <HowToPlayModal onClose={() => setHowToPlayOpen(false)} />
+            )}
+
+            {/* Time Alert Modal */}
+            {showTimeAlert && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl p-6 w-full max-w-xs shadow-2xl text-center transform scale-100 transition-all">
+                        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <span className="text-3xl">⏰</span>
+                        </div>
+                        <h3 className="text-xl font-black text-gray-900 mb-2">Time's Up!</h3>
+                        <p className="text-gray-600 text-sm mb-6 font-medium">
+                            This draw timing has been reached. You can no longer purchase tickets for this draw.
+                        </p>
+                        <button
+                            onClick={() => setShowTimeAlert(false)}
+                            className="w-full py-3.5 rounded-xl font-black text-white bg-red-600 active:scale-95 transition-transform"
+                        >
+                            OK
+                        </button>
+                    </div>
+                </div>
             )}
         </div>
     );

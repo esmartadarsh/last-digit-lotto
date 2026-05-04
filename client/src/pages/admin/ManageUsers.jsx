@@ -11,6 +11,10 @@ export default function ManageUsers() {
   // Search/Pagination (simplified)
   const [search, setSearch] = useState('');
 
+  // Balance Adjustment Modal State
+  const [adjustModal, setAdjustModal] = useState({ show: false, user: null, amount: '', type: 'add' });
+  const [adjusting, setAdjusting] = useState(false);
+
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -29,22 +33,29 @@ export default function ManageUsers() {
     fetchUsers();
   }, [token]);
 
-  const handleAdjustBalance = async (userId, userEmail, currentBalance) => {
-    const amountStr = window.prompt(`Adjust balance for ${userEmail}. Current Balance: ₹${currentBalance}\nEnter positive amount to add, negative to deduct:`);
-    if (!amountStr || isNaN(amountStr)) return;
+  const handleAdjustBalance = async (e) => {
+    e.preventDefault();
+    const { user, amount, type } = adjustModal;
+    const amountNum = parseFloat(amount);
+    
+    if (!user || isNaN(amountNum) || amountNum <= 0) return toast.error("Enter a valid positive amount");
 
-    const amount = parseFloat(amountStr);
+    const finalAmount = type === 'add' ? amountNum : -amountNum;
 
     try {
-      toast.loading("Adjusting balance...", { id: 'adj' });
-      const res = await api.put(`/admin/users/${userId}/balance`, {
-        amount,
+      setAdjusting(true);
+      toast.loading(`${type === 'add' ? 'Adding' : 'Deducting'} balance...`, { id: 'adj' });
+      const res = await api.put(`/admin/users/${user.id}/balance`, {
+        amount: finalAmount,
         reason: 'Manual adjustment via Admin Panel'
       });
-      toast.success("Balance updated!", { id: 'adj' });
+      toast.success(`Successfully ${type === 'add' ? 'added' : 'deducted'} ₹${amountNum} ${type === 'add' ? 'to' : 'from'} ${user.name}'s balance!`, { id: 'adj' });
+      setAdjustModal({ show: false, user: null, amount: '', type: 'add' });
       fetchUsers();
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to adjust balance", { id: 'adj' });
+    } finally {
+      setAdjusting(false);
     }
   };
 
@@ -75,7 +86,7 @@ export default function ManageUsers() {
               <th className="px-6 py-4">User</th>
               <th className="px-6 py-4">Role</th>
               <th className="px-6 py-4">Balance</th>
-              {/* <th className="px-6 py-4 text-right">Actions</th> */}
+              <th className="px-6 py-4 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#334155]">
@@ -99,11 +110,81 @@ export default function ManageUsers() {
                 <td className="px-6 py-4">
                   <span className="font-mono text-lg font-black text-emerald-400">₹{parseFloat(u.balance).toFixed(2)}</span>
                 </td>
+                <td className="px-6 py-4 text-right">
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={() => setAdjustModal({ show: true, user: u, amount: '', type: 'add' })}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-semibold text-xs transition-colors border border-emerald-500/20"
+                    >
+                      <span>➕ Add</span>
+                    </button>
+                    <button
+                      onClick={() => setAdjustModal({ show: true, user: u, amount: '', type: 'sub' })}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold text-xs transition-colors border border-red-500/20"
+                    >
+                      <span>➖ Sub</span>
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* ── Balance Adjustment Modal ── */}
+      {adjustModal.show && adjustModal.user && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-[#1e293b] border border-[#334155] rounded-2xl max-w-md w-full shadow-2xl p-6">
+            <h2 className="text-xl font-bold text-white mb-2">
+              {adjustModal.type === 'add' ? 'Add Balance' : 'Deduct Balance'}
+            </h2>
+            <p className="text-sm text-slate-400 mb-6">
+              User: <span className="text-white font-semibold">{adjustModal.user.name}</span> ({adjustModal.user.email || adjustModal.user.phone})<br />
+              Current Balance: <span className="font-mono text-emerald-400 font-bold">₹{parseFloat(adjustModal.user.balance).toFixed(2)}</span>
+            </p>
+
+            <form onSubmit={handleAdjustBalance}>
+              <div className="mb-6">
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                  Amount to {adjustModal.type === 'add' ? 'Add' : 'Deduct'} (₹)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  required
+                  value={adjustModal.amount}
+                  onChange={e => setAdjustModal(prev => ({ ...prev, amount: e.target.value }))}
+                  placeholder="e.g. 500"
+                  className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition-colors font-mono text-lg"
+                />
+              </div>
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setAdjustModal({ show: false, user: null, amount: '', type: 'add' })}
+                  className="px-5 py-2.5 font-medium text-slate-400 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={adjusting}
+                  className={`px-6 py-2.5 rounded-xl font-semibold transition-colors disabled:opacity-60 shadow-lg text-white ${
+                    adjustModal.type === 'add' 
+                    ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20' 
+                    : 'bg-red-600 hover:bg-red-500 shadow-red-500/20'
+                  }`}
+                >
+                  {adjusting ? 'Processing...' : (adjustModal.type === 'add' ? 'Add Balance' : 'Deduct Balance')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

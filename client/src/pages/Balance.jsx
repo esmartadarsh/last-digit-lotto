@@ -3,6 +3,7 @@ import { FiArrowDownLeft, FiArrowUpRight, FiTrendingUp } from 'react-icons/fi';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import useAuthStore from '../store/useAuthStore';
+import formatDate12Hour from '@/utils/formatDate12Hour';
 import api from '../config/api';
 
 export default function Balance() {
@@ -42,8 +43,8 @@ export default function Balance() {
   const handleDeposit = async (amountToDeposit) => {
     let amount = amountToDeposit;
     if (!amount) {
-        amount = window.prompt("Enter amount to deposit (Min ₹10):", "100");
-        if (!amount || isNaN(amount) || amount < 10) return;
+      amount = window.prompt("Enter amount to deposit (Min ₹10):", "100");
+      if (!amount || isNaN(amount) || amount < 10) return;
     }
 
     try {
@@ -59,45 +60,45 @@ export default function Balance() {
         description: "Wallet Deposit",
         order_id: data.orderId,
         handler: async function (response) {
-            // Note: Actual DB balance increase happens via Backend Webhook.
-            // Here we just refresh the UI after a short delay to allow webhook to process.
-            toast.success("Payment successful! Updating balance...");
-            setTimeout(() => {
-               refreshProfile();
-               location.reload(); // Refresh to pull new transactions
-            }, 2000);
+          // Note: Actual DB balance increase happens via Backend Webhook.
+          // Here we just refresh the UI after a short delay to allow webhook to process.
+          toast.success("Payment successful! Updating balance...");
+          setTimeout(() => {
+            refreshProfile();
+            location.reload(); // Refresh to pull new transactions
+          }, 2000);
         },
         prefill: {
-            name: user?.name || "Player",
-            email: user?.email || "",
+          name: user?.name || "Player",
+          email: user?.email || "",
         },
         theme: {
-            color: "#dc2626"
+          color: "#dc2626"
         }
       };
 
       const rzp = new window.Razorpay(options);
-      rzp.on('payment.failed', function (response){
-          toast.error(`Payment failed: ${response.error.description}`);
+      rzp.on('payment.failed', function (response) {
+        toast.error(`Payment failed: ${response.error.description}`);
       });
       rzp.open();
-      
+
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || "Failed to initiate deposit");
     }
   };
 
   const currentBalance = user ? parseFloat(user.balance) : 0;
-  
+
   // Quick calc
   const totalIncome = transactions.filter(t => t.amount > 0).reduce((acc, t) => acc + parseFloat(t.amount), 0);
   const totalSpent = transactions.filter(t => t.amount < 0).reduce((acc, t) => acc + Math.abs(parseFloat(t.amount)), 0);
 
   const getTxIconData = (tx) => {
-     if (tx.type === 'deposit') return { icon: FiArrowDownLeft, bg: '#dcfce7', color: '#16a34a' };
-     if (tx.type === 'win_lottery' || tx.type === 'win_abc') return { icon: FiTrendingUp, bg: '#dcfce7', color: '#16a34a' };
-     if (tx.type === 'withdrawal') return { icon: FiArrowUpRight, bg: '#fee2e2', color: '#dc2626' };
-     return { icon: FiArrowUpRight, bg: '#fee2e2', color: '#dc2626' }; // Default spend
+    if (tx.type === 'deposit') return { icon: FiArrowDownLeft, bg: '#dcfce7', color: '#16a34a' };
+    if (tx.type === 'win_lottery' || tx.type === 'win_abc') return { icon: FiTrendingUp, bg: '#dcfce7', color: '#16a34a' };
+    if (tx.type === 'withdrawal') return { icon: FiArrowUpRight, bg: '#fee2e2', color: '#dc2626' };
+    return { icon: FiArrowUpRight, bg: '#fee2e2', color: '#dc2626' }; // Default spend
   };
 
   return (
@@ -199,23 +200,23 @@ export default function Balance() {
 
         <div className="space-y-2.5">
           {loading ? (
-             <p className="text-center text-sm font-medium text-gray-500 py-4">Loading...</p>
+            <p className="text-center text-sm font-medium text-gray-500 py-4">Loading...</p>
           ) : transactions.length === 0 ? (
-             <p className="text-center text-sm font-medium text-gray-500 py-4">No transactions found.</p>
+            <p className="text-center text-sm font-medium text-gray-500 py-4">No transactions found.</p>
           ) : (
             transactions.map((tx) => {
               const d = getTxIconData(tx);
               const Icon = d.icon;
               const isPositive = parseFloat(tx.amount) > 0;
-              
+
               const titleMap = {
-                  'deposit': 'Deposit',
-                  'withdrawal': 'Withdrawal',
-                  'bet_lottery': 'Purchased Lottery',
-                  'bet_abc': 'Purchased ABC Ticket',
-                  'win_lottery': 'Won Lottery Draw',
-                  'win_abc': 'Won ABC Ticket',
-                  'refund': 'Refund'
+                'deposit': 'Deposit',
+                'withdrawal': 'Withdrawal',
+                'bet_lottery': 'Purchased Lottery',
+                'bet_abc': 'Purchased ABC Ticket',
+                'win_lottery': 'Won Lottery Draw',
+                'win_abc': 'Won ABC Ticket',
+                'refund': 'Refund'
               };
 
               return (
@@ -234,7 +235,7 @@ export default function Balance() {
                     <div>
                       <h4 className="font-bold text-gray-800 text-sm truncate max-w-[150px]">{titleMap[tx.type] || tx.type}</h4>
                       <p className="text-[11px] font-medium text-gray-400 mt-0.5" title={tx.description}>
-                          {new Date(tx.created_at).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}
+                        {formatDate12Hour(tx.created_at)}
                       </p>
                     </div>
                   </div>
