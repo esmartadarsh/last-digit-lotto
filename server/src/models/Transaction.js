@@ -38,9 +38,9 @@ const Transaction = sequelize.define('Transaction', {
     type: DataTypes.DECIMAL(12, 2),
     allowNull: false,
   },
-  // ID of the related ticket / draw / payment
+  // ID of the related ticket / draw / payment (Razorpay IDs are not UUIDs)
   reference_id: {
-    type: DataTypes.CHAR(36),
+    type: DataTypes.STRING(100),
     allowNull: true,
   },
   reference_type: {

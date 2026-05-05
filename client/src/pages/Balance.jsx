@@ -43,31 +43,54 @@ export default function Balance() {
   const handleDeposit = async (amountToDeposit) => {
     let amount = amountToDeposit;
     if (!amount) {
-      amount = window.prompt("Enter amount to deposit (Min ₹10):", "100");
-      if (!amount || isNaN(amount) || amount < 10) return;
+      const input = window.prompt("Enter amount to deposit (Min ₹10):", "100");
+      if (!input || isNaN(input) || Number(input) < 10) return;
+      amount = Number(input);
     }
 
     try {
+      // Step 1: Create Razorpay order on server
       const { data } = await api.post('/wallet/deposit', { amount: Number(amount) });
-
       if (!data.success) throw new Error(data.message);
 
       const options = {
         key: data.key,
-        amount: data.amount * 100,
+        amount: data.amount * 100, // paise
         currency: data.currency,
         name: "Last Digit Lotto",
-        description: "Wallet Deposit",
+        description: "Wallet Top-Up",
         order_id: data.orderId,
+
+        // Step 2: After user completes payment, Razorpay gives us 3 tokens
         handler: async function (response) {
-          // Note: Actual DB balance increase happens via Backend Webhook.
-          // Here we just refresh the UI after a short delay to allow webhook to process.
-          toast.success("Payment successful! Updating balance...");
-          setTimeout(() => {
-            refreshProfile();
-            location.reload(); // Refresh to pull new transactions
-          }, 2000);
+          try {
+            toast.loading("Verifying payment...", { id: 'verify' });
+
+            // Step 3: Send tokens to server for HMAC verification + wallet credit
+            const verifyRes = await api.post('/wallet/verify-payment', {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              amount: data.amount,
+            });
+
+            toast.dismiss('verify');
+
+            if (verifyRes.data.success) {
+              toast.success(verifyRes.data.message || "Wallet topped up successfully! 🎉");
+              await refreshProfile();
+              // Reload transactions list
+              const txRes = await api.get('/wallet/transactions?limit=20');
+              if (txRes.data.success) setTransactions(txRes.data.transactions);
+            } else {
+              toast.error(verifyRes.data.message || "Payment verification failed. Contact support.");
+            }
+          } catch (verifyErr) {
+            toast.dismiss('verify');
+            toast.error(verifyErr.response?.data?.message || "Could not verify payment. Contact support.");
+          }
         },
+
         prefill: {
           name: user?.name || "Player",
           email: user?.email || "",
