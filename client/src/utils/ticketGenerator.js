@@ -1,4 +1,4 @@
-const LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+const LETTERS = "ABCDEGHJKL";
 
 /** Generate one fully random ticket: [NN][L][NNNNN] */
 export function generateTicketId() {
@@ -52,7 +52,7 @@ export function validateCustomTicket(boxes) {
   return (
     /^\d$/.test(boxes[0]) &&
     /^\d$/.test(boxes[1]) &&
-    /^[A-Za-z]$/.test(boxes[2]) &&
+    /^[A-EGHJKL]$/i.test(boxes[2]) &&
     /^\d$/.test(boxes[3]) &&
     /^\d$/.test(boxes[4]) &&
     /^\d$/.test(boxes[5]) &&

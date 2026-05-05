@@ -47,8 +47,7 @@ function ModeSelector({ buyMode, setBuyMode, addQuickPicks }) {
 
 function SameSetPanel({
   sameSetSubTab, setSameSetSubTab,
-  sameSetOptions, selectedDate,
-  luckyNumber, setLuckyNumber,
+  sameSetOptions, luckyNumber, setLuckyNumber,
   toggleSameSet, addLuckyNumber, refreshSameSetOptions,
   cartItems,
 }) {
@@ -201,7 +200,7 @@ function CustomizePanel({ customBoxes, setCustomBoxes, addCustomTicket }) {
 
   const handleChange = (idx, rawValue) => {
     const cleaned = isLetterBox(idx)
-      ? rawValue.replace(/[^A-Za-z]/g, "").toUpperCase().slice(-1)
+      ? rawValue.replace(/[^A-EGHJKL]/gi, "").toUpperCase().slice(-1)
       : rawValue.replace(/\D/g, "").slice(-1);
 
     const next = [...customBoxes];

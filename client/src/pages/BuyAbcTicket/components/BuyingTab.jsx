@@ -83,19 +83,48 @@ function NumBox({ value, onChange, placeholder = "-" }) {
 
 /* ── Quantity stepper: − qty + ── */
 function QuantityStepper({ qty, onChange }) {
+    const [inputValue, setInputValue] = React.useState(qty);
+
+    React.useEffect(() => {
+        setInputValue(qty);
+    }, [qty]);
+
+    const handleInputChange = (e) => {
+        let val = e.target.value.replace(/\D/g, "");
+        setInputValue(val);
+        if (val !== "" && parseInt(val, 10) > 0) {
+            onChange(parseInt(val, 10));
+        }
+    };
+
+    const handleBlur = () => {
+        if (inputValue === "" || parseInt(inputValue, 10) < 1) {
+            setInputValue(1);
+            onChange(1);
+        }
+    };
+
     return (
         <div className="flex items-center gap-1">
             <button
-                onClick={() => onChange(Math.max(1, qty - 1))}
-                className="w-7 h-7 flex items-center justify-center rounded-lg font-black text-gray-600 active:scale-90 transition-all select-none"
+                onClick={() => onChange(Math.max(1, (parseInt(qty) || 1) - 1))}
+                className="w-7 h-7 flex items-center justify-center rounded-lg font-black text-gray-600 active:scale-90 transition-all select-none flex-shrink-0"
                 style={{ background: "#f3f4f6", border: "1px solid #e5e7eb" }}
             >
                 −
             </button>
-            <span className="text-gray-800 font-black text-[13px] w-6 text-center select-none">{qty}</span>
+            <input
+                type="text"
+                inputMode="numeric"
+                value={inputValue}
+                onChange={handleInputChange}
+                onBlur={handleBlur}
+                className="text-gray-800 font-black text-[13px] w-10 text-center outline-none bg-transparent"
+                style={{ minWidth: "40px" }}
+            />
             <button
-                onClick={() => onChange(qty + 1)}
-                className="w-7 h-7 flex items-center justify-center rounded-lg font-black text-white active:scale-90 transition-all select-none"
+                onClick={() => onChange((parseInt(qty) || 1) + 1)}
+                className="w-7 h-7 flex items-center justify-center rounded-lg font-black text-white active:scale-90 transition-all select-none flex-shrink-0"
                 style={{ background: "linear-gradient(135deg, #66bb6a, #43a047)" }}
             >
                 +

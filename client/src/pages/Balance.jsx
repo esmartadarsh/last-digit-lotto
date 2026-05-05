@@ -2,25 +2,28 @@ import { IoWalletOutline } from 'react-icons/io5';
 import { FiArrowDownLeft, FiArrowUpRight, FiTrendingUp } from 'react-icons/fi';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import { Capacitor } from '@capacitor/core';
 import useAuthStore from '../store/useAuthStore';
 import formatDate12Hour from '@/utils/formatDate12Hour';
 import api from '../config/api';
+
+const isNative = Capacitor.isNativePlatform();
 
 export default function Balance() {
   const { user, token, refreshProfile } = useAuthStore();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Load Razorpay web script only on browser (not needed for native app)
   useEffect(() => {
-    // Dynamically load Razorpay script
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    if (isNative) return; // Native uses capacitor-razorpay plugin, no script needed
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.async = true;
     document.body.appendChild(script);
-
     return () => {
-      document.body.removeChild(script);
-    }
+      if (document.body.contains(script)) document.body.removeChild(script);
+    };
   }, []);
 
   useEffect(() => {
@@ -32,7 +35,7 @@ export default function Balance() {
           setTransactions(res.data.transactions);
         }
       } catch (err) {
-        toast.error("Failed to load transactions");
+        toast.error('Failed to load transactions');
       } finally {
         setLoading(false);
       }
@@ -40,74 +43,144 @@ export default function Balance() {
     fetchHistory();
   }, [token]);
 
+  /** Shared: verify payment with server and credit wallet */
+  const verifyAndCredit = async (paymentId, orderId, signature, amount) => {
+    toast.loading('Verifying payment...', { id: 'verify' });
+    try {
+      const verifyRes = await api.post('/wallet/verify-payment', {
+        razorpay_order_id: orderId,
+        razorpay_payment_id: paymentId,
+        razorpay_signature: signature,
+        amount,
+      });
+      toast.dismiss('verify');
+      if (verifyRes.data.success) {
+        toast.success(verifyRes.data.message || 'Wallet topped up successfully! 🎉');
+        await refreshProfile();
+        const txRes = await api.get('/wallet/transactions?limit=20');
+        if (txRes.data.success) setTransactions(txRes.data.transactions);
+      } else {
+        toast.error(verifyRes.data.message || 'Payment verification failed. Contact support.');
+      }
+    } catch (err) {
+      toast.dismiss('verify');
+      toast.error(err.response?.data?.message || 'Could not verify payment. Contact support.');
+    }
+  };
+
   const handleDeposit = async (amountToDeposit) => {
     let amount = amountToDeposit;
     if (!amount) {
-      const input = window.prompt("Enter amount to deposit (Min ₹10):", "100");
-      if (!input || isNaN(input) || Number(input) < 10) return;
-      amount = Number(input);
+      const input = window.prompt('Enter amount to deposit (Min ₹10):', '100');
+      if (!input) return; // user cancelled — no toast needed
+      const parsed = Number(input);
+      if (isNaN(parsed) || parsed < 10) {
+        toast.error('Minimum deposit amount is ₹10.');
+        return;
+      }
+      if (parsed > 100000) {
+        toast.error('Maximum deposit amount is ₹1,00,000.');
+        return;
+      }
+      amount = parsed;
     }
 
     try {
-      // Step 1: Create Razorpay order on server
+      // Step 1: Create Razorpay order on server (same for both native & web)
       const { data } = await api.post('/wallet/deposit', { amount: Number(amount) });
       if (!data.success) throw new Error(data.message);
 
-      const options = {
-        key: data.key,
-        amount: data.amount * 100, // paise
-        currency: data.currency,
-        name: "Last Digit Lotto",
-        description: "Wallet Top-Up",
-        order_id: data.orderId,
+      console.log(isNative, 'check')
 
-        // Step 2: After user completes payment, Razorpay gives us 3 tokens
-        handler: async function (response) {
-          try {
-            toast.loading("Verifying payment...", { id: 'verify' });
-
-            // Step 3: Send tokens to server for HMAC verification + wallet credit
-            const verifyRes = await api.post('/wallet/verify-payment', {
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-              amount: data.amount,
-            });
-
-            toast.dismiss('verify');
-
-            if (verifyRes.data.success) {
-              toast.success(verifyRes.data.message || "Wallet topped up successfully! 🎉");
-              await refreshProfile();
-              // Reload transactions list
-              const txRes = await api.get('/wallet/transactions?limit=20');
-              if (txRes.data.success) setTransactions(txRes.data.transactions);
-            } else {
-              toast.error(verifyRes.data.message || "Payment verification failed. Contact support.");
-            }
-          } catch (verifyErr) {
-            toast.dismiss('verify');
-            toast.error(verifyErr.response?.data?.message || "Could not verify payment. Contact support.");
-          }
-        },
-
-        prefill: {
-          name: user?.name || "Player",
-          email: user?.email || "",
-        },
-        theme: {
-          color: "#dc2626"
+      const { Checkout } = await import('capacitor-razorpay');
+      try {
+        const result = await Checkout.open({
+          key: data.key,
+          amount: String(data.amount * 100), // paise, must be a string
+          currency: data.currency,
+          name: 'Last Digit Lotto',
+          description: 'Wallet Top-Up',
+          order_id: data.orderId,
+          prefill: {
+            name: user?.name || 'Player',
+            email: user?.email || '',
+            contact: user?.phone || '',
+          },
+          theme: { color: '#dc2626' },
+        });
+        // result.response contains paymentId, orderId, signature
+        const r = result.response;
+        await verifyAndCredit(r.razorpay_payment_id, r.razorpay_order_id, r.razorpay_signature, data.amount);
+      } catch (nativeErr) {
+        // User cancelled or payment failed
+        if (nativeErr?.code === 0) {
+          toast('Payment cancelled.', { icon: '❌' });
+        } else {
+          toast.error(`Payment failed: ${nativeErr?.description || nativeErr?.message || 'Unknown error'}`);
         }
-      };
+      }
 
-      const rzp = new window.Razorpay(options);
-      rzp.on('payment.failed', function (response) {
-        toast.error(`Payment failed: ${response.error.description}`);
-      });
-      rzp.open();
+      if (isNative) {
+        // ── NATIVE ANDROID: use Razorpay native SDK via Capacitor plugin ──────
+        const { Checkout } = await import('capacitor-razorpay');
+        try {
+          const result = await Checkout.open({
+            key: data.key,
+            amount: String(data.amount * 100), // paise, must be a string
+            currency: data.currency,
+            name: 'Last Digit Lotto',
+            description: 'Wallet Top-Up',
+            order_id: data.orderId,
+            prefill: {
+              name: user?.name || 'Player',
+              email: user?.email || '',
+              contact: user?.phone || '',
+            },
+            theme: { color: '#dc2626' },
+          });
+          // result.response contains paymentId, orderId, signature
+          const r = result.response;
+          await verifyAndCredit(r.razorpay_payment_id, r.razorpay_order_id, r.razorpay_signature, data.amount);
+        } catch (nativeErr) {
+          // User cancelled or payment failed
+          if (nativeErr?.code === 0) {
+            toast('Payment cancelled.', { icon: '❌' });
+          } else {
+            toast.error(`Payment failed: ${nativeErr?.description || nativeErr?.message || 'Unknown error'}`);
+          }
+        }
+      } else {
+        // ── WEB BROWSER: use standard Razorpay web checkout ───────────────────
+        const options = {
+          key: data.key,
+          amount: data.amount * 100,
+          currency: data.currency,
+          name: 'Last Digit Lotto',
+          description: 'Wallet Top-Up',
+          order_id: data.orderId,
+          handler: async (response) => {
+            await verifyAndCredit(
+              response.razorpay_payment_id,
+              response.razorpay_order_id,
+              response.razorpay_signature,
+              data.amount
+            );
+          },
+          prefill: {
+            name: user?.name || 'Player',
+            email: user?.email || '',
+          },
+          theme: { color: '#dc2626' },
+        };
+        const rzp = new window.Razorpay(options);
+        rzp.on('payment.failed', (response) => {
+          toast.error(`Payment failed: ${response.error.description}`);
+        });
+        rzp.open();
+      }
 
     } catch (err) {
-      toast.error(err.response?.data?.message || err.message || "Failed to initiate deposit");
+      toast.error(err.response?.data?.message || err.message || 'Failed to initiate deposit');
     }
   };
 

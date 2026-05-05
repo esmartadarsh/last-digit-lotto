@@ -7,13 +7,19 @@ const { User, Transaction } = require('../models');
 const authenticate = require('../middleware/auth');
 
 /**
- * Helper to get Razorpay instance dynamically (ensures env vars are loaded)
+ * Lazy singleton Razorpay instance.
+ * Created once on first use (ensures env vars are loaded) and reused.
+ * Avoids 401 auth errors caused by rapidly creating new instances.
  */
-const getRazorpayInstance = () => {
-  return new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
-  });
+let _razorpay = null;
+const getRazorpay = () => {
+  if (!_razorpay) {
+    _razorpay = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET,
+    });
+  }
+  return _razorpay;
 };
 
 /**
@@ -50,16 +56,17 @@ router.get('/transactions', authenticate, async (req, res) => {
 router.post('/deposit', authenticate, async (req, res) => {
   const { amount } = req.body;
 
-  if (!amount || isNaN(amount) || Number(amount) < 10 || Number(amount) > 100000) {
+  const parsed = Number(amount);
+  if (!amount || isNaN(parsed) || parsed < 10 || parsed > 100000) {
     return res.status(400).json({ success: false, message: 'Amount must be between ₹10 and ₹1,00,000' });
   }
 
   try {
-    const razorpay = getRazorpayInstance();
-    
+    const razorpay = getRazorpay();
+
     // Create receipt: `dep_<timestamp>` to guarantee it's under 40 chars
     const receiptStr = `dep_${Date.now()}`;
-    
+
     const order = await razorpay.orders.create({
       amount: Math.round(Number(amount) * 100), // Razorpay works in paise
       currency: 'INR',
@@ -73,13 +80,18 @@ router.post('/deposit', authenticate, async (req, res) => {
     return res.json({
       success: true,
       orderId: order.id,
-      amount: Number(amount),
+      amount: parsed,
       currency: 'INR',
       key: process.env.RAZORPAY_KEY_ID,
     });
   } catch (err) {
     console.error('Razorpay order error:', err);
-    return res.status(500).json({ success: false, message: 'Failed to create payment order' });
+    // Forward Razorpay's own error description so the user sees a meaningful message
+    const razorpayMsg =
+      err?.error?.description ||
+      err?.error?.code ||
+      'Failed to create payment order. Please try again.';
+    return res.status(500).json({ success: false, message: razorpayMsg });
   }
 });
 

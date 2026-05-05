@@ -165,7 +165,7 @@ export default function BuyLotteryTicket() {
       return;
     }
     if (!activeDraw) return toast.error("No active draw available");
-    
+
     // Time check verification
     if (new Date() >= new Date(activeDraw.scheduled_at)) {
       setShowTimeAlert(true);
@@ -230,7 +230,8 @@ export default function BuyLotteryTicket() {
 
       <DrawBanner
         username={user?.name || "Player"}
-        drawNumber={`NO.${activeDraw?.id.substring(0, 8)}`}
+        // drawNumber={`NO.${activeDraw?.id.substring(0, 8)}`}
+        gameName={game}
         drawTime={activeDraw ? formatDate12Hour(activeDraw.scheduled_at) : "N/A"}
         bannerUrl={activeDraw?.banner_url}
       />

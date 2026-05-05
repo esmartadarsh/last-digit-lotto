@@ -70,6 +70,10 @@ export default function BuyAbcTicket() {
                 const res = await api.get(`/games/${game}`);
                 if (res.data.success && res.data.game.draws.length > 0) {
                     let draws = res.data.game.draws;
+                    
+                    // Sort draws ascending by scheduled time
+                    draws.sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at));
+
                     if (targetDate) {
                         draws = draws.filter(d => {
                             const dObj = new Date(d.scheduled_at);
