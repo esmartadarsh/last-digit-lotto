@@ -13,6 +13,8 @@ export default function Balance() {
   const { user, token, refreshProfile } = useAuthStore();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
+  const [depositAmount, setDepositAmount] = useState('');
 
   // Load Razorpay web script only on browser (not needed for native app)
   useEffect(() => {
@@ -68,21 +70,24 @@ export default function Balance() {
     }
   };
 
-  const handleDeposit = async (amountToDeposit) => {
-    let amount = amountToDeposit;
-    if (!amount) {
-      const input = window.prompt('Enter amount to deposit (Min ₹10):', '100');
-      if (!input) return; // user cancelled — no toast needed
-      const parsed = Number(input);
-      if (isNaN(parsed) || parsed < 10) {
-        toast.error('Minimum deposit amount is ₹10.');
-        return;
-      }
-      if (parsed > 100000) {
-        toast.error('Maximum deposit amount is ₹1,00,000.');
-        return;
-      }
-      amount = parsed;
+  const handleDeposit = (amountToDeposit) => {
+    if (!amountToDeposit) {
+      setDepositAmount('100');
+      setIsDepositModalOpen(true);
+      return;
+    }
+    processDeposit(amountToDeposit);
+  };
+
+  const processDeposit = async (amountToDeposit) => {
+    const amount = Number(amountToDeposit);
+    if (isNaN(amount) || amount < 10) {
+      toast.error('Minimum deposit amount is ₹10.');
+      return;
+    }
+    if (amount > 100000) {
+      toast.error('Maximum deposit amount is ₹1,00,000.');
+      return;
     }
 
     try {
@@ -347,6 +352,55 @@ export default function Balance() {
           )}
         </div>
       </div>
+
+      {/* ── Deposit Modal ── */}
+      {isDepositModalOpen && (
+        <div className="fixed inset-0 flex items-center justify-center p-4 bg-black/60" style={{ zIndex: 51 }}>
+          <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl relative"
+            style={{ animation: 'modalSlideUp 0.3s ease-out' }}
+          >
+            <h2 className="text-xl font-black text-gray-900 mb-2">Deposit Funds</h2>
+            <p className="text-sm font-medium text-gray-500 mb-6">Enter the amount you wish to add to your wallet.</p>
+
+            <div className="relative mb-6">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-lg">₹</span>
+              <input
+                type="number"
+                value={depositAmount}
+                onChange={(e) => setDepositAmount(e.target.value)}
+                placeholder="100"
+                className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-4 pl-10 pr-4 text-xl font-black text-gray-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all"
+                autoFocus
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setIsDepositModalOpen(false)}
+                className="flex-1 py-3.5 rounded-2xl font-bold text-gray-600 bg-gray-100 active:bg-gray-200 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setIsDepositModalOpen(false);
+                  processDeposit(depositAmount);
+                }}
+                className="flex-1 py-3.5 rounded-2xl font-black text-white bg-blue-600 active:bg-blue-700 transition-all shadow-lg shadow-blue-600/30"
+              >
+                Deposit
+              </button>
+            </div>
+
+            <style>{`
+              @keyframes modalSlideUp {
+                from { opacity: 0; transform: translateY(20px) scale(0.95); }
+                to { opacity: 1; transform: translateY(0) scale(1); }
+              }
+            `}</style>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
