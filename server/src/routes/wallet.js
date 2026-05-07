@@ -1,26 +1,22 @@
 const express = require('express');
 const router = express.Router();
-const Razorpay = require('razorpay');
-const crypto = require('crypto');
+const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const { User, Transaction } = require('../models');
 const authenticate = require('../middleware/auth');
+const adminOnly = require('../middleware/adminOnly');
 
-/**
- * Lazy singleton Razorpay instance.
- * Created once on first use (ensures env vars are loaded) and reused.
- * Avoids 401 auth errors caused by rapidly creating new instances.
- */
-let _razorpay = null;
-const getRazorpay = () => {
-  if (!_razorpay) {
-    _razorpay = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID,
-      key_secret: process.env.RAZORPAY_KEY_SECRET,
-    });
-  }
-  return _razorpay;
+const DEPOSIT_EXPIRY_MINUTES = 15;
+
+const generateOrderId = () => {
+  const date = new Date();
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const random = Math.floor(1000 + Math.random() * 9000);
+  return `TXN${yyyy}${mm}${dd}${random}`;
 };
+
 
 /**
  * GET /api/wallet/balance
@@ -51,7 +47,7 @@ router.get('/transactions', authenticate, async (req, res) => {
 
 /**
  * POST /api/wallet/deposit
- * Creates a Razorpay order. Frontend uses the returned orderId to open the payment modal.
+ * Creates a pending deposit request for manual UPI payment.
  */
 router.post('/deposit', authenticate, async (req, res) => {
   const { amount } = req.body;
@@ -62,132 +58,228 @@ router.post('/deposit', authenticate, async (req, res) => {
   }
 
   try {
-    const razorpay = getRazorpay();
+    const orderId = generateOrderId();
+    const user = await User.findByPk(req.user.id);
 
-    // Create receipt: `dep_<timestamp>` to guarantee it's under 40 chars
-    const receiptStr = `dep_${Date.now()}`;
-
-    const order = await razorpay.orders.create({
-      amount: Math.round(Number(amount) * 100), // Razorpay works in paise
-      currency: 'INR',
-      receipt: receiptStr,
-      notes: {
-        user_id: req.user.id,
-        user_name: req.user.name || 'Player',
-      },
+    // Save deposit request in DB with status pending
+    await Transaction.create({
+      user_id: req.user.id,
+      type: 'deposit',
+      amount: parsed,
+      balance_before: user.balance,
+      balance_after: user.balance, // balance doesn't change yet
+      reference_id: orderId,
+      reference_type: 'upi_deposit',
+      status: 'pending',
+      description: `Manual UPI deposit ₹${parsed} (Order: ${orderId})`
     });
 
     return res.json({
       success: true,
-      orderId: order.id,
       amount: parsed,
-      currency: 'INR',
-      key: process.env.RAZORPAY_KEY_ID,
+      orderId,
+      message: 'Deposit request created.'
     });
   } catch (err) {
-    console.error('Razorpay order error:', err);
-    // Forward Razorpay's own error description so the user sees a meaningful message
-    const razorpayMsg =
-      err?.error?.description ||
-      err?.error?.code ||
-      'Failed to create payment order. Please try again.';
-    return res.status(500).json({ success: false, message: razorpayMsg });
+    console.error('Deposit error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to process deposit. Please try again.' });
   }
 });
 
 /**
- * POST /api/wallet/verify-payment
- * Called by the frontend immediately after the Razorpay checkout handler fires.
- * Verifies the HMAC signature server-side, then credits the user's wallet atomically.
- * This is the no-webhook approach — fully self-contained.
- *
- * Body: { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount }
+ * POST /api/wallet/deposit/utr
+ * User submits UTR for a pending deposit. Transitions status: pending → submitted.
+ * Validates: UTR format, no duplicates, not expired.
  */
-router.post('/verify-payment', authenticate, async (req, res) => {
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount } = req.body;
+router.post('/deposit/utr', authenticate, async (req, res) => {
+  const { orderId, utr } = req.body;
 
-  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !amount) {
-    return res.status(400).json({ success: false, message: 'Missing payment verification fields' });
-  }
-
-  // 1. Verify signature: HMAC-SHA256(order_id + "|" + payment_id, key_secret)
-  const expectedSignature = crypto
-    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-    .digest('hex');
-
-  if (expectedSignature !== razorpay_signature) {
-    console.warn('⚠️  Invalid Razorpay payment signature');
-    return res.status(400).json({ success: false, message: 'Payment verification failed. Invalid signature.' });
+  const utrClean = String(utr || '').replace(/\D/g, '');
+  if (!orderId || utrClean.length < 12) {
+    return res.status(400).json({ success: false, message: 'Please provide a valid UTR number (minimum 12 digits)' });
   }
 
   try {
-    // 2. Check for duplicate — don't credit twice for the same payment ID
-    const existing = await Transaction.findOne({
-      where: { reference_id: razorpay_payment_id },
+    // Prevent duplicate UTR across ALL transactions
+    const duplicateUtr = await Transaction.findOne({
+      where: { description: { [Op.like]: `%UTR: ${utrClean}%` } }
     });
-    if (existing) {
-      return res.json({ success: true, message: 'Payment already credited', alreadyCredited: true });
+    if (duplicateUtr) {
+      return res.status(400).json({ success: false, message: 'This UTR number has already been submitted. Contact support if this is an error.' });
     }
 
-    // 3. Credit balance atomically
+    const tx = await Transaction.findOne({
+      where: {
+        user_id: req.user.id,
+        reference_id: orderId,
+        type: 'deposit',
+        reference_type: 'upi_deposit',
+      }
+    });
+
+    if (!tx) {
+      return res.status(404).json({ success: false, message: 'Deposit request not found' });
+    }
+
+    if (tx.status === 'completed') {
+      return res.json({ success: true, message: 'This deposit has already been approved.' });
+    }
+    if (tx.status === 'failed') {
+      return res.status(400).json({ success: false, message: 'This deposit was rejected. Please start a new deposit.' });
+    }
+    if (tx.status === 'reversed') {
+      return res.status(400).json({ success: false, message: 'This deposit has expired. Please start a new deposit.' });
+    }
+    if (tx.status === 'pending') {
+      // Check expiry (15 minutes from creation)
+      const ageMs = Date.now() - new Date(tx.created_at).getTime();
+      if (ageMs > DEPOSIT_EXPIRY_MINUTES * 60 * 1000) {
+        await tx.update({ status: 'reversed' });
+        return res.status(400).json({ success: false, message: 'This deposit order has expired. Please create a new deposit.' });
+      }
+    }
+
+    // Transition: pending → submitted (reuse description to carry UTR)
+    await tx.update({
+      status: 'pending', // stays pending until admin approves, but we store UTR
+      description: tx.description.replace(/\|\s*UTR:.*$/, '') + ` | UTR: ${utrClean}`
+    });
+
+    return res.json({ success: true, message: 'UTR submitted successfully! Admin will verify your payment shortly.' });
+  } catch (err) {
+    console.error('UTR submit error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to submit UTR.' });
+  }
+});
+
+/* ═══════════════════════════ ADMIN: DEPOSIT MANAGEMENT ═══════════════════════════ */
+
+/**
+ * GET /api/wallet/admin/deposits
+ * Admin: list all UPI deposit requests (pending, completed, failed, reversed).
+ */
+router.get('/admin/deposits', authenticate, adminOnly, async (req, res) => {
+  try {
+    const { status, page = 1, limit = 30 } = req.query;
+    const where = { reference_type: 'upi_deposit', type: 'deposit' };
+    if (status) where.status = status;
+
+    const { count, rows } = await Transaction.findAndCountAll({
+      where,
+      include: [{ model: User, as: 'user', attributes: ['id', 'name', 'email', 'phone'] }],
+      order: [['created_at', 'DESC']],
+      limit: parseInt(limit),
+      offset: (parseInt(page) - 1) * parseInt(limit),
+    });
+
+    return res.json({ success: true, total: count, deposits: rows });
+  } catch (err) {
+    console.error('Admin deposits fetch error:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/**
+ * POST /api/wallet/admin/deposits/:txId/approve
+ * Admin: approve a pending UPI deposit → credit user wallet.
+ * Guards against double credit.
+ */
+router.post('/admin/deposits/:txId/approve', authenticate, adminOnly, async (req, res) => {
+  try {
+    const tx = await Transaction.findByPk(req.params.txId);
+    if (!tx || tx.reference_type !== 'upi_deposit') {
+      return res.status(404).json({ success: false, message: 'Deposit request not found' });
+    }
+    if (tx.status === 'completed') {
+      return res.json({ success: true, message: 'Already approved — no changes made.' });
+    }
+    if (tx.status === 'reversed') {
+      return res.status(400).json({ success: false, message: 'Cannot approve an expired deposit.' });
+    }
+    if (tx.status === 'failed') {
+      return res.status(400).json({ success: false, message: 'Cannot approve a rejected deposit.' });
+    }
+
     await sequelize.transaction(async (t) => {
-      const user = await User.findByPk(req.user.id, { lock: t.LOCK.UPDATE, transaction: t });
+      const user = await User.findByPk(tx.user_id, { lock: t.LOCK.UPDATE, transaction: t });
       if (!user) throw new Error('User not found');
 
-      const depositAmount = Number(amount);
+      const depositAmount = parseFloat(tx.amount);
       const balanceBefore = parseFloat(user.balance);
       const balanceAfter = balanceBefore + depositAmount;
 
       await user.update({ balance: balanceAfter }, { transaction: t });
-
-      await Transaction.create(
-        {
-          user_id: req.user.id,
-          type: 'deposit',
-          amount: depositAmount,
-          balance_before: balanceBefore,
-          balance_after: balanceAfter,
-          reference_id: razorpay_payment_id,
-          reference_type: 'razorpay_payment',
-          status: 'completed',
-          description: `Razorpay deposit ₹${depositAmount} (Order: ${razorpay_order_id})`,
-        },
-        { transaction: t }
-      );
+      await tx.update({
+        status: 'completed',
+        balance_before: balanceBefore,
+        balance_after: balanceAfter,
+        description: tx.description + ` | Approved by admin`,
+      }, { transaction: t });
     });
 
-    console.log(`✅ Deposit ₹${amount} credited to user ${req.user.id} via verify-payment`);
-    return res.json({ success: true, message: `₹${amount} successfully added to your wallet!` });
+    console.log(`✅ UPI Deposit approved: ₹${tx.amount} for user ${tx.user_id} (Tx: ${tx.id})`);
+    return res.json({ success: true, message: `Deposit of ₹${tx.amount} approved and wallet credited.` });
   } catch (err) {
-    console.error('❌ verify-payment error:', err);
-    return res.status(500).json({ success: false, message: 'Failed to credit wallet. Contact support.' });
+    console.error('Deposit approve error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to approve deposit.' });
+  }
+});
+
+/**
+ * POST /api/wallet/admin/deposits/:txId/reject
+ * Admin: reject a pending UPI deposit.
+ */
+router.post('/admin/deposits/:txId/reject', authenticate, adminOnly, async (req, res) => {
+  const { reason } = req.body;
+  try {
+    const tx = await Transaction.findByPk(req.params.txId);
+    if (!tx || tx.reference_type !== 'upi_deposit') {
+      return res.status(404).json({ success: false, message: 'Deposit request not found' });
+    }
+    if (tx.status === 'completed') {
+      return res.status(400).json({ success: false, message: 'Cannot reject an already approved deposit.' });
+    }
+    if (tx.status === 'failed') {
+      return res.json({ success: true, message: 'Already rejected.' });
+    }
+
+    await tx.update({
+      status: 'failed',
+      description: tx.description + ` | Rejected by admin${reason ? ': ' + reason : ''}`,
+    });
+
+    return res.json({ success: true, message: 'Deposit rejected.' });
+  } catch (err) {
+    console.error('Deposit reject error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to reject deposit.' });
   }
 });
 
 /**
  * POST /api/wallet/withdraw
- * Creates a pending withdrawal request. Admin processes it manually via the admin panel.
+ * Creates a pending withdrawal request via UPI. Admin processes it manually via the admin panel.
+ * Balance is locked (deducted) immediately; refunded if admin rejects.
  */
 router.post('/withdraw', authenticate, async (req, res) => {
-  const { amount, account_number, ifsc, account_holder } = req.body;
+  const { amount, upi_id } = req.body;
 
-  if (!amount || amount < 100) {
+  const parsed = Number(amount);
+  if (!parsed || isNaN(parsed) || parsed < 100) {
     return res.status(400).json({ success: false, message: 'Minimum withdrawal is ₹100' });
   }
-  if (!account_number || !ifsc || !account_holder) {
-    return res.status(400).json({ success: false, message: 'Bank details are required' });
+  if (!upi_id || upi_id.trim().length < 5 || !upi_id.includes('@')) {
+    return res.status(400).json({ success: false, message: 'Please provide a valid UPI ID (e.g. name@upi)' });
   }
 
   try {
     await sequelize.transaction(async (t) => {
-      const user = await req.user.reload({ lock: t.LOCK.UPDATE, transaction: t });
-      if (parseFloat(user.balance) < amount) {
+      const user = await User.findByPk(req.user.id, { lock: t.LOCK.UPDATE, transaction: t });
+      if (parseFloat(user.balance) < parsed) {
         throw Object.assign(new Error('Insufficient balance'), { status: 400 });
       }
 
       const balanceBefore = parseFloat(user.balance);
-      const balanceAfter = balanceBefore - amount;
+      const balanceAfter = balanceBefore - parsed;
 
       await user.update({ balance: balanceAfter }, { transaction: t });
 
@@ -195,11 +287,12 @@ router.post('/withdraw', authenticate, async (req, res) => {
         {
           user_id: req.user.id,
           type: 'withdrawal',
-          amount: -amount,
+          amount: -parsed,
           balance_before: balanceBefore,
           balance_after: balanceAfter,
-          status: 'pending', // Admin will mark as completed after processing
-          description: `Withdrawal ₹${amount} → ${account_holder} | ${account_number} | ${ifsc}`,
+          reference_type: 'upi_withdrawal',
+          status: 'pending',
+          description: `Withdrawal ₹${parsed} via UPI | UPI ID: ${upi_id.trim()}`,
         },
         { transaction: t }
       );
@@ -211,6 +304,104 @@ router.post('/withdraw', authenticate, async (req, res) => {
     });
   } catch (err) {
     return res.status(err.status || 500).json({ success: false, message: err.message });
+  }
+});
+
+/* ═══════════════════════════ ADMIN: WITHDRAWAL MANAGEMENT ═══════════════════════════ */
+
+/**
+ * GET /api/wallet/admin/withdrawals
+ * Admin: list all UPI withdrawal requests.
+ */
+router.get('/admin/withdrawals', authenticate, adminOnly, async (req, res) => {
+  try {
+    const { status, page = 1, limit = 20 } = req.query;
+    const where = { reference_type: 'upi_withdrawal', type: 'withdrawal' };
+    if (status) where.status = status;
+
+    const { count, rows } = await Transaction.findAndCountAll({
+      where,
+      include: [{ model: User, as: 'user', attributes: ['id', 'name', 'email', 'phone'] }],
+      order: [['created_at', 'DESC']],
+      limit: parseInt(limit),
+      offset: (parseInt(page) - 1) * parseInt(limit),
+    });
+
+    return res.json({ success: true, total: count, withdrawals: rows });
+  } catch (err) {
+    console.error('Admin withdrawals fetch error:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/**
+ * POST /api/wallet/admin/withdrawals/:txId/approve
+ * Admin: mark withdrawal as processed (payment sent to user's UPI).
+ */
+router.post('/admin/withdrawals/:txId/approve', authenticate, adminOnly, async (req, res) => {
+  try {
+    const tx = await Transaction.findByPk(req.params.txId);
+    if (!tx || tx.reference_type !== 'upi_withdrawal') {
+      return res.status(404).json({ success: false, message: 'Withdrawal request not found' });
+    }
+    if (tx.status === 'completed') {
+      return res.json({ success: true, message: 'Already marked as processed.' });
+    }
+    if (tx.status === 'failed') {
+      return res.status(400).json({ success: false, message: 'Cannot approve a rejected withdrawal.' });
+    }
+
+    await tx.update({
+      status: 'completed',
+      description: tx.description + ` | Processed by admin`,
+    });
+
+    console.log(`✅ Withdrawal processed: ₹${Math.abs(tx.amount)} for user ${tx.user_id} (Tx: ${tx.id})`);
+    return res.json({ success: true, message: `Withdrawal of ₹${Math.abs(tx.amount)} marked as processed.` });
+  } catch (err) {
+    console.error('Withdrawal approve error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to approve withdrawal.' });
+  }
+});
+
+/**
+ * POST /api/wallet/admin/withdrawals/:txId/reject
+ * Admin: reject a pending withdrawal → refund user balance.
+ */
+router.post('/admin/withdrawals/:txId/reject', authenticate, adminOnly, async (req, res) => {
+  const { reason } = req.body;
+  try {
+    const tx = await Transaction.findByPk(req.params.txId);
+    if (!tx || tx.reference_type !== 'upi_withdrawal') {
+      return res.status(404).json({ success: false, message: 'Withdrawal request not found' });
+    }
+    if (tx.status === 'completed') {
+      return res.status(400).json({ success: false, message: 'Cannot reject an already processed withdrawal.' });
+    }
+    if (tx.status === 'failed') {
+      return res.json({ success: true, message: 'Already rejected.' });
+    }
+
+    await sequelize.transaction(async (t) => {
+      const user = await User.findByPk(tx.user_id, { lock: t.LOCK.UPDATE, transaction: t });
+      if (!user) throw new Error('User not found');
+
+      // Refund the withheld amount
+      const refundAmount = Math.abs(parseFloat(tx.amount));
+      const balanceBefore = parseFloat(user.balance);
+      const balanceAfter = balanceBefore + refundAmount;
+
+      await user.update({ balance: balanceAfter }, { transaction: t });
+      await tx.update({
+        status: 'failed',
+        description: tx.description + ` | Rejected by admin${reason ? ': ' + reason : ''}`,
+      }, { transaction: t });
+    });
+
+    return res.json({ success: true, message: 'Withdrawal rejected and balance refunded to user.' });
+  } catch (err) {
+    console.error('Withdrawal reject error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to reject withdrawal.' });
   }
 });
 

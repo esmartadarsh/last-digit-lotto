@@ -17,13 +17,15 @@ import Profile from '@/pages/Profile';
 import BuyLotteryTicket from '@/pages/BuyLotteryTicket';
 import BuyAbcTicket from '@/pages/BuyAbcTicket';
 
-// Admin pages
 import AdminDashboard from '@/pages/admin/AdminDashboard';
 import ManageDraws from '@/pages/admin/ManageDraws';
 import ManageUsers from '@/pages/admin/ManageUsers';
 import ManageLotteryGame from '@/pages/admin/ManageLotteryGame';
 import ManageAbcGame from '@/pages/admin/ManageAbcGame';
 import AdminLogin from '@/pages/admin/AdminLogin';
+import ManageDeposits from '@/pages/admin/ManageDeposits';
+import ManageWithdrawals from '@/pages/admin/ManageWithdrawals';
+import ManageTickets from '@/pages/admin/ManageTickets';
 
 // ── Hard Auth Guard ──
 function RequireAuth({ children, requireAdmin }) {
@@ -131,6 +133,9 @@ export default function AppRoutes() {
                                 <Route path="lottery" element={<ManageLotteryGame />} />
                                 <Route path="abc" element={<ManageAbcGame />} />
                                 <Route path="users" element={<ManageUsers />} />
+                                <Route path="deposits" element={<ManageDeposits />} />
+                                <Route path="withdrawals" element={<ManageWithdrawals />} />
+                                <Route path="tickets" element={<ManageTickets />} />
                             </Route>
                         </>
                     )}

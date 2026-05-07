@@ -549,4 +549,41 @@ router.delete('/games/:gameId', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/admin/tickets
+ * Paginated tickets list for both Lottery and ABC.
+ */
+router.get('/tickets', async (req, res) => {
+  try {
+    const { page = 1, limit = 50, type = 'lottery' } = req.query;
+    const offset = (page - 1) * limit;
+
+    if (type === 'lottery') {
+      const { count, rows } = await LotteryTicket.findAndCountAll({
+        include: [
+          { model: User, as: 'user', attributes: ['id', 'name', 'email'] },
+          { model: Draw, as: 'draw', include: [{ model: Game, as: 'game' }] }
+        ],
+        order: [['purchased_at', 'DESC']],
+        limit: parseInt(limit),
+        offset,
+      });
+      return res.json({ success: true, total: count, tickets: rows });
+    } else {
+      const { count, rows } = await AbcTicket.findAndCountAll({
+        include: [
+          { model: User, as: 'user', attributes: ['id', 'name', 'email'] },
+          { model: Draw, as: 'draw', include: [{ model: Game, as: 'game' }] }
+        ],
+        order: [['purchased_at', 'DESC']],
+        limit: parseInt(limit),
+        offset,
+      });
+      return res.json({ success: true, total: count, tickets: rows });
+    }
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;

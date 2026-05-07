@@ -2,12 +2,10 @@ import { IoWalletOutline } from 'react-icons/io5';
 import { FiArrowDownLeft, FiArrowUpRight, FiTrendingUp } from 'react-icons/fi';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { Capacitor } from '@capacitor/core';
+import QRCode from 'react-qr-code';
 import useAuthStore from '../store/useAuthStore';
 import formatDate12Hour from '@/utils/formatDate12Hour';
 import api from '../config/api';
-
-const isNative = Capacitor.isNativePlatform();
 
 export default function Balance() {
   const { user, token, refreshProfile } = useAuthStore();
@@ -16,17 +14,16 @@ export default function Balance() {
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
   const [depositAmount, setDepositAmount] = useState('');
 
-  // Load Razorpay web script only on browser (not needed for native app)
-  useEffect(() => {
-    if (isNative) return; // Native uses capacitor-razorpay plugin, no script needed
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
-    document.body.appendChild(script);
-    return () => {
-      if (document.body.contains(script)) document.body.removeChild(script);
-    };
-  }, []);
+  // Phase 2 states
+  const [depositStep, setDepositStep] = useState(1);
+  const [orderData, setOrderData] = useState(null);
+  const [utr, setUtr] = useState('');
+
+  // Withdraw states
+  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawUpiId, setWithdrawUpiId] = useState('');
+  const [withdrawLoading, setWithdrawLoading] = useState(false);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -45,34 +42,11 @@ export default function Balance() {
     fetchHistory();
   }, [token]);
 
-  /** Shared: verify payment with server and credit wallet */
-  const verifyAndCredit = async (paymentId, orderId, signature, amount) => {
-    toast.loading('Verifying payment...', { id: 'verify' });
-    try {
-      const verifyRes = await api.post('/wallet/verify-payment', {
-        razorpay_order_id: orderId,
-        razorpay_payment_id: paymentId,
-        razorpay_signature: signature,
-        amount,
-      });
-      toast.dismiss('verify');
-      if (verifyRes.data.success) {
-        toast.success(verifyRes.data.message || 'Wallet topped up successfully! 🎉');
-        await refreshProfile();
-        const txRes = await api.get('/wallet/transactions?limit=20');
-        if (txRes.data.success) setTransactions(txRes.data.transactions);
-      } else {
-        toast.error(verifyRes.data.message || 'Payment verification failed. Contact support.');
-      }
-    } catch (err) {
-      toast.dismiss('verify');
-      toast.error(err.response?.data?.message || 'Could not verify payment. Contact support.');
-    }
-  };
-
   const handleDeposit = (amountToDeposit) => {
     if (!amountToDeposit) {
       setDepositAmount('100');
+      setDepositStep(1);
+      setUtr('');
       setIsDepositModalOpen(true);
       return;
     }
@@ -91,101 +65,66 @@ export default function Balance() {
     }
 
     try {
-      // Step 1: Create Razorpay order on server (same for both native & web)
+      // Phase 2: UPI Manual Flow
       const { data } = await api.post('/wallet/deposit', { amount: Number(amount) });
       if (!data.success) throw new Error(data.message);
 
-      console.log(isNative, 'check')
-
-      const { Checkout } = await import('capacitor-razorpay');
-      try {
-        const result = await Checkout.open({
-          key: data.key,
-          amount: String(data.amount * 100), // paise, must be a string
-          currency: data.currency,
-          name: 'Last Digit Lotto',
-          description: 'Wallet Top-Up',
-          order_id: data.orderId,
-          prefill: {
-            name: user?.name || 'Player',
-            email: user?.email || '',
-            contact: user?.phone || '',
-          },
-          theme: { color: '#dc2626' },
-        });
-        // result.response contains paymentId, orderId, signature
-        const r = result.response;
-        await verifyAndCredit(r.razorpay_payment_id, r.razorpay_order_id, r.razorpay_signature, data.amount);
-      } catch (nativeErr) {
-        // User cancelled or payment failed
-        if (nativeErr?.code === 0) {
-          toast('Payment cancelled.', { icon: '❌' });
-        } else {
-          toast.error(`Payment failed: ${nativeErr?.description || nativeErr?.message || 'Unknown error'}`);
-        }
-      }
-
-      if (isNative) {
-        // ── NATIVE ANDROID: use Razorpay native SDK via Capacitor plugin ──────
-        const { Checkout } = await import('capacitor-razorpay');
-        try {
-          const result = await Checkout.open({
-            key: data.key,
-            amount: String(data.amount * 100), // paise, must be a string
-            currency: data.currency,
-            name: 'Last Digit Lotto',
-            description: 'Wallet Top-Up',
-            order_id: data.orderId,
-            prefill: {
-              name: user?.name || 'Player',
-              email: user?.email || '',
-              contact: user?.phone || '',
-            },
-            theme: { color: '#dc2626' },
-          });
-          // result.response contains paymentId, orderId, signature
-          const r = result.response;
-          await verifyAndCredit(r.razorpay_payment_id, r.razorpay_order_id, r.razorpay_signature, data.amount);
-        } catch (nativeErr) {
-          // User cancelled or payment failed
-          if (nativeErr?.code === 0) {
-            toast('Payment cancelled.', { icon: '❌' });
-          } else {
-            toast.error(`Payment failed: ${nativeErr?.description || nativeErr?.message || 'Unknown error'}`);
-          }
-        }
-      } else {
-        // ── WEB BROWSER: use standard Razorpay web checkout ───────────────────
-        const options = {
-          key: data.key,
-          amount: data.amount * 100,
-          currency: data.currency,
-          name: 'Last Digit Lotto',
-          description: 'Wallet Top-Up',
-          order_id: data.orderId,
-          handler: async (response) => {
-            await verifyAndCredit(
-              response.razorpay_payment_id,
-              response.razorpay_order_id,
-              response.razorpay_signature,
-              data.amount
-            );
-          },
-          prefill: {
-            name: user?.name || 'Player',
-            email: user?.email || '',
-          },
-          theme: { color: '#dc2626' },
-        };
-        const rzp = new window.Razorpay(options);
-        rzp.on('payment.failed', (response) => {
-          toast.error(`Payment failed: ${response.error.description}`);
-        });
-        rzp.open();
-      }
-
+      setOrderData({ orderId: data.orderId, amount: data.amount });
+      setDepositStep(2);
+      setUtr('');
+      setIsDepositModalOpen(true); // if it was triggered via quick buttons
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || 'Failed to initiate deposit');
+    }
+  };
+
+  const submitUtr = async () => {
+    if (!utr || utr.trim().length < 12) {
+      return toast.error('Please enter a valid 12-digit UTR');
+    }
+    try {
+      const { data } = await api.post('/wallet/deposit/utr', { orderId: orderData.orderId, utr });
+      if (data.success) {
+        toast.success(data.message || 'UTR submitted successfully!');
+        setIsDepositModalOpen(false);
+        setDepositStep(1);
+
+        // Refresh transactions to show pending
+        const txRes = await api.get('/wallet/transactions?limit=20');
+        if (txRes.data.success) setTransactions(txRes.data.transactions);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to submit UTR');
+    }
+  };
+
+  const handleWithdraw = async () => {
+    const amount = Number(withdrawAmount);
+    if (isNaN(amount) || amount < 100) {
+      return toast.error('Minimum withdrawal amount is ₹100.');
+    }
+    if (!withdrawUpiId.trim() || !withdrawUpiId.includes('@')) {
+      return toast.error('Please enter a valid UPI ID (e.g. name@upi).');
+    }
+    setWithdrawLoading(true);
+    try {
+      const { data } = await api.post('/wallet/withdraw', {
+        amount,
+        upi_id: withdrawUpiId.trim(),
+      });
+      if (data.success) {
+        toast.success(data.message || 'Withdrawal request submitted!');
+        setIsWithdrawModalOpen(false);
+        setWithdrawAmount('');
+        setWithdrawUpiId('');
+        await refreshProfile();
+        const txRes = await api.get('/wallet/transactions?limit=20');
+        if (txRes.data.success) setTransactions(txRes.data.transactions);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to submit withdrawal request.');
+    } finally {
+      setWithdrawLoading(false);
     }
   };
 
@@ -261,7 +200,11 @@ export default function Balance() {
               <button
                 className="py-3.5 rounded-2xl font-bold text-sm text-white active:scale-95 transition-all"
                 style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)' }}
-                onClick={() => toast.success("Withdrawals are processed manually via Admin.")}
+                onClick={() => {
+                  setWithdrawAmount('');
+                  setWithdrawUpiId('');
+                  setIsWithdrawModalOpen(true);
+                }}
               >
                 ↑ Withdraw
               </button>
@@ -355,49 +298,219 @@ export default function Balance() {
 
       {/* ── Deposit Modal ── */}
       {isDepositModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center p-4 bg-black/60" style={{ zIndex: 51 }}>
-          <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl relative"
+        <div
+          className="fixed inset-0 flex items-center justify-center p-4 bg-black/60"
+          style={{ zIndex: 51 }}
+        >
+          <div
+            className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl relative"
             style={{ animation: 'modalSlideUp 0.3s ease-out' }}
           >
-            <h2 className="text-xl font-black text-gray-900 mb-2">Deposit Funds</h2>
-            <p className="text-sm font-medium text-gray-500 mb-6">Enter the amount you wish to add to your wallet.</p>
+            {depositStep === 1 ? (
+              <>
+                <h2 className="text-xl font-black text-gray-900 mb-2">
+                  Deposit Funds
+                </h2>
 
-            <div className="relative mb-6">
+                <p className="text-sm font-medium text-gray-500 mb-6">
+                  Enter the amount you wish to add to your wallet.
+                </p>
+
+                <div className="relative mb-6">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-lg">
+                    ₹
+                  </span>
+
+                  <input
+                    type="number"
+                    value={depositAmount}
+                    onChange={(e) => setDepositAmount(e.target.value)}
+                    placeholder="100"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-4 pl-10 pr-4 text-xl font-black text-gray-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setIsDepositModalOpen(false);
+                      setDepositStep(1);
+                    }}
+                    className="flex-1 py-3.5 rounded-2xl font-bold text-gray-600 bg-gray-100 active:bg-gray-200 transition-all"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    onClick={() => processDeposit(depositAmount)}
+                    className="flex-1 py-3.5 rounded-2xl font-black text-white bg-blue-600 active:bg-blue-700 transition-all shadow-lg shadow-blue-600/30"
+                  >
+                    Continue
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="text-xl font-black text-gray-900 mb-1">
+                  Pay & Verify
+                </h2>
+
+                <p className="text-[13px] font-medium text-gray-500 mb-4 leading-tight">
+                  Pay ₹{orderData?.amount} using any UPI app and enter the 12-digit
+                  UTR below.
+                </p>
+
+                {/* Responsive Pay block */}
+                <div className="bg-gray-50 rounded-2xl p-4 mb-5 flex flex-col items-center border border-gray-100">
+                  <div className="hidden md:block w-full mb-2">
+                    <div className="bg-white p-3 rounded-xl mx-auto w-fit shadow-sm border border-gray-200">
+                      <QRCode
+                        value={`upi://pay?pa=9667479529@ptyes&pn=LotteryApp&am=${orderData?.amount}&cu=INR&tn=${orderData?.orderId}`}
+                        size={160}
+                      />
+                    </div>
+
+                    <p className="text-[10px] text-center text-gray-400 mt-2 font-bold uppercase tracking-wider">
+                      Scan to Pay using UPI
+                    </p>
+                  </div>
+
+                  <div className="md:hidden w-full">
+                    <a
+                      href={`upi://pay?pa=9667479529@ptyes&pn=LotteryApp&am=${orderData?.amount}&cu=INR&tn=${orderData?.orderId}`}
+                      className="flex items-center justify-center w-full py-3.5 rounded-xl font-black text-white bg-[#059669] active:scale-95 transition-transform"
+                    >
+                      Pay Now with UPI App
+                    </a>
+                  </div>
+                </div>
+
+                <div className="mb-6">
+                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 ml-1">
+                    12-Digit UTR Number
+                  </label>
+
+                  <input
+                    type="text"
+                    value={utr}
+                    onChange={(e) =>
+                      setUtr(e.target.value.replace(/\D/g, '').slice(0, 12))
+                    }
+                    placeholder="e.g. 123456789012"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 px-4 text-sm font-bold text-gray-900 outline-none focus:border-blue-500 transition-all text-center tracking-widest"
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setIsDepositModalOpen(false);
+                      setDepositStep(1);
+                    }}
+                    className="flex-1 py-3.5 rounded-2xl font-bold text-gray-600 bg-gray-100 active:bg-gray-200 transition-all text-sm"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    onClick={submitUtr}
+                    className="flex-[1.5] py-3.5 rounded-2xl font-black text-white bg-blue-600 active:bg-blue-700 transition-all shadow-lg shadow-blue-600/30 text-sm"
+                  >
+                    Submit UTR
+                  </button>
+                </div>
+              </>
+            )}
+
+            <style>{`
+        @keyframes modalSlideUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px) scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+      `}</style>
+          </div>
+        </div>
+      )}
+
+      {/* ── Withdraw Modal ── */}
+      {isWithdrawModalOpen && (
+        <div
+          className="fixed inset-0 flex items-center justify-center p-4 bg-black/60"
+          style={{ zIndex: 51 }}
+        >
+          <div
+            className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl relative"
+            style={{ animation: 'modalSlideUp 0.3s ease-out' }}
+          >
+            <h2 className="text-xl font-black text-gray-900 mb-1">Withdraw Funds</h2>
+            <p className="text-sm font-medium text-gray-500 mb-5">
+              Enter amount and your UPI ID. Admin will process within 24 hours.
+            </p>
+
+            {/* Amount */}
+            <div className="relative mb-4">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-lg">₹</span>
               <input
                 type="number"
-                value={depositAmount}
-                onChange={(e) => setDepositAmount(e.target.value)}
-                placeholder="100"
-                className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-4 pl-10 pr-4 text-xl font-black text-gray-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all"
+                value={withdrawAmount}
+                onChange={(e) => setWithdrawAmount(e.target.value)}
+                placeholder="Min ₹100"
+                className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-4 pl-10 pr-4 text-xl font-black text-gray-900 outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/20 transition-all"
                 autoFocus
               />
             </div>
 
+            {/* UPI ID */}
+            <div className="mb-6">
+              <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 ml-1">
+                Your UPI ID
+              </label>
+              <input
+                type="text"
+                value={withdrawUpiId}
+                onChange={(e) => setWithdrawUpiId(e.target.value)}
+                placeholder="e.g. yourname@upi"
+                className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 px-4 text-sm font-bold text-gray-900 outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/20 transition-all"
+              />
+            </div>
+
+            {/* Info note */}
+            <div className="bg-orange-50 border border-orange-100 rounded-2xl px-4 py-3 mb-5">
+              <p className="text-[12px] font-semibold text-orange-700 leading-snug">
+                ⚠️ Your balance will be deducted immediately and refunded if the request is rejected by admin.
+              </p>
+            </div>
+
             <div className="flex gap-3">
               <button
-                onClick={() => setIsDepositModalOpen(false)}
+                onClick={() => setIsWithdrawModalOpen(false)}
                 className="flex-1 py-3.5 rounded-2xl font-bold text-gray-600 bg-gray-100 active:bg-gray-200 transition-all"
               >
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  setIsDepositModalOpen(false);
-                  processDeposit(depositAmount);
-                }}
-                className="flex-1 py-3.5 rounded-2xl font-black text-white bg-blue-600 active:bg-blue-700 transition-all shadow-lg shadow-blue-600/30"
+                onClick={handleWithdraw}
+                disabled={withdrawLoading}
+                className="flex-[1.5] py-3.5 rounded-2xl font-black text-white active:scale-95 transition-all shadow-lg text-sm"
+                style={{ background: withdrawLoading ? '#f97316aa' : 'linear-gradient(135deg, #f97316, #ea580c)', boxShadow: '0 6px 20px rgba(249,115,22,0.35)' }}
               >
-                Deposit
+                {withdrawLoading ? 'Submitting…' : 'Submit Request'}
               </button>
             </div>
 
             <style>{`
-              @keyframes modalSlideUp {
-                from { opacity: 0; transform: translateY(20px) scale(0.95); }
-                to { opacity: 1; transform: translateY(0) scale(1); }
-              }
-            `}</style>
+        @keyframes modalSlideUp {
+          from { opacity: 0; transform: translateY(20px) scale(0.95); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
           </div>
         </div>
       )}
