@@ -292,7 +292,7 @@ export default function BuyingTab({
                 <SectionHeader
                     title="Triple Digit"
                     perTicket={prices.triple}
-                    win="₹15,000"
+                    win="₹5,000"
                     onQuickGuess={() => quickGuess("triple")}
                 />
 
