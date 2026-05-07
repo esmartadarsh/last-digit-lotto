@@ -262,7 +262,7 @@ router.put(
 
     try {
       const { drawId, winningNumber, prizes, result_image_url } = req.body;
-      
+
       const { LotteryResult } = require('../models');
       const { syncResultToFirestore } = require('../services/firestoreSync');
 
@@ -390,9 +390,6 @@ router.get('/users', async (req, res) => {
       offset: (page - 1) * limit,
     });
 
-    console.log('all users', rows)
-
-    return res.json({ success: true, total: count, users: rows });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }

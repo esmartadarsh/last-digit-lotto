@@ -40,7 +40,6 @@ export default function Home() {
     const [lotteryDraws, setLotteryDraws] = useState([]);
     const [abcDraws, setAbcDraws] = useState([]);
     const [loading, setLoading] = useState(true);
-    console.log(lotteryDraws, 'draw info')
 
     useEffect(() => {
         const fetchActiveDraws = async () => {
