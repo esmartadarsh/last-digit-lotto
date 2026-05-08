@@ -257,18 +257,41 @@ router.post('/admin/deposits/:txId/reject', authenticate, adminOnly, async (req,
 
 /**
  * POST /api/wallet/withdraw
- * Creates a pending withdrawal request via UPI. Admin processes it manually via the admin panel.
+ * Creates a pending withdrawal request via UPI or Bank Transfer.
  * Balance is locked (deducted) immediately; refunded if admin rejects.
  */
 router.post('/withdraw', authenticate, async (req, res) => {
-  const { amount, upi_id } = req.body;
+  const { amount, payment_method = 'upi', upi_id, account_holder, account_number, ifsc_code, bank_name } = req.body;
 
   const parsed = Number(amount);
   if (!parsed || isNaN(parsed) || parsed < 100) {
     return res.status(400).json({ success: false, message: 'Minimum withdrawal is ₹100' });
   }
-  if (!upi_id || upi_id.trim().length < 5 || !upi_id.includes('@')) {
-    return res.status(400).json({ success: false, message: 'Please provide a valid UPI ID (e.g. name@upi)' });
+
+  let referenceType, description;
+
+  if (payment_method === 'bank') {
+    if (!account_holder || account_holder.trim().length < 2) {
+      return res.status(400).json({ success: false, message: 'Please provide account holder name' });
+    }
+    if (!account_number || account_number.trim().length < 9) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid account number' });
+    }
+    if (!ifsc_code || ifsc_code.trim().length < 11) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid 11-character IFSC code' });
+    }
+    if (!bank_name || bank_name.trim().length < 2) {
+      return res.status(400).json({ success: false, message: 'Please provide bank name' });
+    }
+    referenceType = 'bank_withdrawal';
+    description = `Withdrawal ₹${parsed} via Bank Transfer | Account Holder: ${account_holder.trim()} | Account Number: ${account_number.trim()} | IFSC: ${ifsc_code.trim().toUpperCase()} | Bank: ${bank_name.trim()}`;
+  } else {
+    // Default: UPI
+    if (!upi_id || upi_id.trim().length < 5 || !upi_id.includes('@')) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid UPI ID (e.g. name@upi)' });
+    }
+    referenceType = 'upi_withdrawal';
+    description = `Withdrawal ₹${parsed} via UPI | UPI ID: ${upi_id.trim()}`;
   }
 
   try {
@@ -290,9 +313,9 @@ router.post('/withdraw', authenticate, async (req, res) => {
           amount: -parsed,
           balance_before: balanceBefore,
           balance_after: balanceAfter,
-          reference_type: 'upi_withdrawal',
+          reference_type: referenceType,
           status: 'pending',
-          description: `Withdrawal ₹${parsed} via UPI | UPI ID: ${upi_id.trim()}`,
+          description,
         },
         { transaction: t }
       );
@@ -316,7 +339,7 @@ router.post('/withdraw', authenticate, async (req, res) => {
 router.get('/admin/withdrawals', authenticate, adminOnly, async (req, res) => {
   try {
     const { status, page = 1, limit = 20 } = req.query;
-    const where = { reference_type: 'upi_withdrawal', type: 'withdrawal' };
+    const where = { reference_type: { [Op.in]: ['upi_withdrawal', 'bank_withdrawal'] }, type: 'withdrawal' };
     if (status) where.status = status;
 
     const { count, rows } = await Transaction.findAndCountAll({
@@ -341,7 +364,7 @@ router.get('/admin/withdrawals', authenticate, adminOnly, async (req, res) => {
 router.post('/admin/withdrawals/:txId/approve', authenticate, adminOnly, async (req, res) => {
   try {
     const tx = await Transaction.findByPk(req.params.txId);
-    if (!tx || tx.reference_type !== 'upi_withdrawal') {
+    if (!tx || !['upi_withdrawal', 'bank_withdrawal'].includes(tx.reference_type)) {
       return res.status(404).json({ success: false, message: 'Withdrawal request not found' });
     }
     if (tx.status === 'completed') {
@@ -372,7 +395,7 @@ router.post('/admin/withdrawals/:txId/reject', authenticate, adminOnly, async (r
   const { reason } = req.body;
   try {
     const tx = await Transaction.findByPk(req.params.txId);
-    if (!tx || tx.reference_type !== 'upi_withdrawal') {
+    if (!tx || !['upi_withdrawal', 'bank_withdrawal'].includes(tx.reference_type)) {
       return res.status(404).json({ success: false, message: 'Withdrawal request not found' });
     }
     if (tx.status === 'completed') {

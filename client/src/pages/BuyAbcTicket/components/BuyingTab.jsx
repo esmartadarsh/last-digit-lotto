@@ -329,15 +329,7 @@ export default function BuyingTab({
                         )}
 
                         <div className="flex gap-2">
-                            <button
-                                className="px-5 py-2 rounded-lg font-black text-white text-[12px] active:scale-95 transition-all"
-                                style={{
-                                    background: "linear-gradient(135deg, #16a34a, #15803d)",
-                                    boxShadow: "0 4px 12px rgba(22,163,74,0.3)",
-                                }}
-                            >
-                                BOX
-                            </button>
+
 
                             <AddBtn
                                 disabled={!triple.a || !triple.b || !triple.c}

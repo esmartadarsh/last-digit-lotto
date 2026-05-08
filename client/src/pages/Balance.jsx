@@ -22,7 +22,13 @@ export default function Balance() {
   // Withdraw states
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawMethod, setWithdrawMethod] = useState('upi'); // 'upi' | 'bank'
   const [withdrawUpiId, setWithdrawUpiId] = useState('');
+  // Bank transfer fields
+  const [bankAccountHolder, setBankAccountHolder] = useState('');
+  const [bankAccountNumber, setBankAccountNumber] = useState('');
+  const [bankIfsc, setBankIfsc] = useState('');
+  const [bankName, setBankName] = useState('');
   const [withdrawLoading, setWithdrawLoading] = useState(false);
 
   useEffect(() => {
@@ -103,20 +109,40 @@ export default function Balance() {
     if (isNaN(amount) || amount < 100) {
       return toast.error('Minimum withdrawal amount is ₹100.');
     }
-    if (!withdrawUpiId.trim() || !withdrawUpiId.includes('@')) {
-      return toast.error('Please enter a valid UPI ID (e.g. name@upi).');
+
+    if (withdrawMethod === 'upi') {
+      if (!withdrawUpiId.trim() || !withdrawUpiId.includes('@')) {
+        return toast.error('Please enter a valid UPI ID (e.g. name@upi).');
+      }
+    } else {
+      if (!bankAccountHolder.trim()) return toast.error('Please enter account holder name.');
+      if (!bankAccountNumber.trim() || bankAccountNumber.trim().length < 9) return toast.error('Please enter a valid account number.');
+      if (!bankIfsc.trim() || bankIfsc.trim().length < 11) return toast.error('Please enter a valid 11-character IFSC code.');
+      if (!bankName.trim()) return toast.error('Please enter your bank name.');
     }
+
     setWithdrawLoading(true);
     try {
-      const { data } = await api.post('/wallet/withdraw', {
-        amount,
-        upi_id: withdrawUpiId.trim(),
-      });
+      const payload = { amount, payment_method: withdrawMethod };
+      if (withdrawMethod === 'upi') {
+        payload.upi_id = withdrawUpiId.trim();
+      } else {
+        payload.account_holder = bankAccountHolder.trim();
+        payload.account_number = bankAccountNumber.trim();
+        payload.ifsc_code = bankIfsc.trim().toUpperCase();
+        payload.bank_name = bankName.trim();
+      }
+
+      const { data } = await api.post('/wallet/withdraw', payload);
       if (data.success) {
         toast.success(data.message || 'Withdrawal request submitted!');
         setIsWithdrawModalOpen(false);
         setWithdrawAmount('');
         setWithdrawUpiId('');
+        setBankAccountHolder('');
+        setBankAccountNumber('');
+        setBankIfsc('');
+        setBankName('');
         await refreshProfile();
         const txRes = await api.get('/wallet/transactions?limit=20');
         if (txRes.data.success) setTransactions(txRes.data.transactions);
@@ -202,7 +228,12 @@ export default function Balance() {
                 style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)' }}
                 onClick={() => {
                   setWithdrawAmount('');
+                  setWithdrawMethod('upi');
                   setWithdrawUpiId('');
+                  setBankAccountHolder('');
+                  setBankAccountNumber('');
+                  setBankIfsc('');
+                  setBankName('');
                   setIsWithdrawModalOpen(true);
                 }}
               >
@@ -446,12 +477,12 @@ export default function Balance() {
           style={{ zIndex: 51 }}
         >
           <div
-            className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl relative"
-            style={{ animation: 'modalSlideUp 0.3s ease-out' }}
+            className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl relative overflow-y-auto"
+            style={{ animation: 'modalSlideUp 0.3s ease-out', maxHeight: '90vh' }}
           >
             <h2 className="text-xl font-black text-gray-900 mb-1">Withdraw Funds</h2>
-            <p className="text-sm font-medium text-gray-500 mb-5">
-              Enter amount and your UPI ID. Admin will process within 24 hours.
+            <p className="text-sm font-medium text-gray-500 mb-4">
+              Admin will process your request within 24 hours.
             </p>
 
             {/* Amount */}
@@ -467,24 +498,102 @@ export default function Balance() {
               />
             </div>
 
-            {/* UPI ID */}
-            <div className="mb-6">
-              <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 ml-1">
-                Your UPI ID
-              </label>
-              <input
-                type="text"
-                value={withdrawUpiId}
-                onChange={(e) => setWithdrawUpiId(e.target.value)}
-                placeholder="e.g. yourname@upi"
-                className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 px-4 text-sm font-bold text-gray-900 outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/20 transition-all"
-              />
+            {/* Payment Method Selector */}
+            <div className="mb-4">
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">Payment Method</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setWithdrawMethod('upi')}
+                  className="flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm transition-all border-2"
+                  style={withdrawMethod === 'upi'
+                    ? { background: 'linear-gradient(135deg,#fff7ed,#ffedd5)', borderColor: '#f97316', color: '#ea580c' }
+                    : { background: '#f9fafb', borderColor: '#e5e7eb', color: '#6b7280' }
+                  }
+                >
+                  <span style={{ fontSize: 18 }}>📱</span> UPI
+                </button>
+                <button
+                  onClick={() => setWithdrawMethod('bank')}
+                  className="flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm transition-all border-2"
+                  style={withdrawMethod === 'bank'
+                    ? { background: 'linear-gradient(135deg,#eff6ff,#dbeafe)', borderColor: '#3b82f6', color: '#1d4ed8' }
+                    : { background: '#f9fafb', borderColor: '#e5e7eb', color: '#6b7280' }
+                  }
+                >
+                  <span style={{ fontSize: 18 }}>🏦</span> Bank Transfer
+                </button>
+              </div>
             </div>
+
+            {/* UPI Fields */}
+            {withdrawMethod === 'upi' && (
+              <div className="mb-4">
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 ml-1">
+                  Your UPI ID
+                </label>
+                <input
+                  type="text"
+                  value={withdrawUpiId}
+                  onChange={(e) => setWithdrawUpiId(e.target.value)}
+                  placeholder="e.g. yourname@okicici"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 px-4 text-sm font-bold text-gray-900 outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/20 transition-all"
+                />
+              </div>
+            )}
+
+            {/* Bank Transfer Fields */}
+            {withdrawMethod === 'bank' && (
+              <div className="space-y-3 mb-4">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 ml-1">Account Holder Name</label>
+                  <input
+                    type="text"
+                    value={bankAccountHolder}
+                    onChange={(e) => setBankAccountHolder(e.target.value)}
+                    placeholder="Full name as per bank"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 text-sm font-bold text-gray-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 ml-1">Account Number</label>
+                  <input
+                    type="text"
+                    value={bankAccountNumber}
+                    onChange={(e) => setBankAccountNumber(e.target.value.replace(/\D/g, ''))}
+                    placeholder="Enter account number"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 text-sm font-bold text-gray-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all tracking-widest"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 ml-1">IFSC Code</label>
+                    <input
+                      type="text"
+                      value={bankIfsc}
+                      onChange={(e) => setBankIfsc(e.target.value.toUpperCase())}
+                      placeholder="e.g. SBIN0001234"
+                      maxLength={11}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-3 text-sm font-bold text-gray-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 ml-1">Bank Name</label>
+                    <input
+                      type="text"
+                      value={bankName}
+                      onChange={(e) => setBankName(e.target.value)}
+                      placeholder="e.g. SBI"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-3 text-sm font-bold text-gray-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Info note */}
             <div className="bg-orange-50 border border-orange-100 rounded-2xl px-4 py-3 mb-5">
               <p className="text-[12px] font-semibold text-orange-700 leading-snug">
-                ⚠️ Your balance will be deducted immediately and refunded if the request is rejected by admin.
+                ⚠️ Balance is deducted immediately and refunded if admin rejects the request.
               </p>
             </div>
 
