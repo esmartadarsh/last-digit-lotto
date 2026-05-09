@@ -15,7 +15,8 @@ const STATUS_COLORS = {
 };
 
 export default function ManageAbcGame() {
-  const { token } = useAuthStore();
+  const { token, user } = useAuthStore();
+  const isSuperAdmin = user?.role === 'superadmin';
 
   // ── State ──
   const [games, setGames] = useState([]);
@@ -523,10 +524,12 @@ export default function ManageAbcGame() {
                             className="text-amber-400 font-medium px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 transition-colors text-xs">
                             Close Draw
                           </button>
-                          <button onClick={() => handleDeleteDraw(draw.id)}
-                            className="text-red-400 font-medium px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 transition-colors text-xs">
-                            Delete
-                          </button>
+                          {isSuperAdmin && (
+                            <button onClick={() => handleDeleteDraw(draw.id)}
+                              className="text-red-400 font-medium px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 transition-colors text-xs">
+                              Delete
+                            </button>
+                          )}
                         </div>
                       )}
                       {draw.status === 'closed' && (
@@ -535,10 +538,12 @@ export default function ManageAbcGame() {
                             className="text-emerald-400 font-medium px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors text-xs">
                             Announce Result
                           </button>
-                          <button onClick={() => handleDeleteDraw(draw.id)}
-                            className="text-red-400 font-medium px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 transition-colors text-xs">
-                            Delete
-                          </button>
+                          {isSuperAdmin && (
+                            <button onClick={() => handleDeleteDraw(draw.id)}
+                              className="text-red-400 font-medium px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 transition-colors text-xs">
+                              Delete
+                            </button>
+                          )}
                         </div>
                       )}
                       {draw.status === 'completed' && (

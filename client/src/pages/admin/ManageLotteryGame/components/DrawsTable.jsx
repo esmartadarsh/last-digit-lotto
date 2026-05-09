@@ -1,6 +1,6 @@
 import React from 'react'
 import { STATUS_COLORS } from '@/data.js';
-export default function DrawsTable({ draws, loading, onCloseDraw, onDeleteDraw, onAnnounce, onEditAnnounce }) {
+export default function DrawsTable({ draws, loading, onCloseDraw, onDeleteDraw, onAnnounce, onEditAnnounce, isSuperAdmin }) {
     return (
         <div>
             <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -61,10 +61,12 @@ export default function DrawsTable({ draws, loading, onCloseDraw, onDeleteDraw, 
                                                     className="text-amber-400 font-medium px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 transition-colors text-xs">
                                                     Close Draw
                                                 </button>
-                                                <button onClick={() => onDeleteDraw(draw.id)}
-                                                    className="text-red-400 font-medium px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 transition-colors text-xs">
-                                                    Delete
-                                                </button>
+                                                {isSuperAdmin && (
+                                                    <button onClick={() => onDeleteDraw(draw.id)}
+                                                        className="text-red-400 font-medium px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 transition-colors text-xs">
+                                                        Delete
+                                                    </button>
+                                                )}
                                             </div>
                                         )}
                                         {draw.status === 'closed' && (
@@ -73,10 +75,12 @@ export default function DrawsTable({ draws, loading, onCloseDraw, onDeleteDraw, 
                                                     className="text-emerald-400 font-medium px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors text-xs">
                                                     Announce Result
                                                 </button>
-                                                <button onClick={() => onDeleteDraw(draw.id)}
-                                                    className="text-red-400 font-medium px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 transition-colors text-xs">
-                                                    Delete
-                                                </button>
+                                                {isSuperAdmin && (
+                                                    <button onClick={() => onDeleteDraw(draw.id)}
+                                                        className="text-red-400 font-medium px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 transition-colors text-xs">
+                                                        Delete
+                                                    </button>
+                                                )}
                                             </div>
                                         )}
                                         {draw.status === 'completed' && (

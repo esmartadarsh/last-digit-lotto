@@ -2,7 +2,7 @@ import { IoWalletOutline } from 'react-icons/io5';
 import { FiArrowDownLeft, FiArrowUpRight, FiTrendingUp } from 'react-icons/fi';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import QRCode from 'react-qr-code';
+import { QRCode } from 'react-qr-code';
 import useAuthStore from '../store/useAuthStore';
 import formatDate12Hour from '@/utils/formatDate12Hour';
 import api from '../config/api';
@@ -49,6 +49,7 @@ export default function Balance() {
   }, [token]);
 
   const handleDeposit = (amountToDeposit) => {
+    console.log('reaching 1')
     if (!amountToDeposit) {
       setDepositAmount('100');
       setDepositStep(1);
@@ -56,10 +57,14 @@ export default function Balance() {
       setIsDepositModalOpen(true);
       return;
     }
+    console.log('reaching 2')
+
     processDeposit(amountToDeposit);
   };
 
   const processDeposit = async (amountToDeposit) => {
+    console.log('reaching 3')
+
     const amount = Number(amountToDeposit);
     if (isNaN(amount) || amount < 10) {
       toast.error('Minimum deposit amount is ₹10.');
@@ -74,6 +79,7 @@ export default function Balance() {
       // Phase 2: UPI Manual Flow
       const { data } = await api.post('/wallet/deposit', { amount: Number(amount) });
       if (!data.success) throw new Error(data.message);
+      console.log('reaching 4')
 
       setOrderData({ orderId: data.orderId, amount: data.amount });
       setDepositStep(2);
@@ -91,7 +97,7 @@ export default function Balance() {
     try {
       const { data } = await api.post('/wallet/deposit/utr', { orderId: orderData.orderId, utr });
       if (data.success) {
-        toast.success(data.message || 'UTR submitted successfully!');
+        toast.success('UTR submitted! Your deposit will be credited after admin verification.', { duration: 5000 });
         setIsDepositModalOpen(false);
         setDepositStep(1);
 
@@ -157,8 +163,9 @@ export default function Balance() {
   const currentBalance = user ? parseFloat(user.balance) : 0;
 
   // Quick calc
-  const totalIncome = transactions.filter(t => t.amount > 0).reduce((acc, t) => acc + parseFloat(t.amount), 0);
-  const totalSpent = transactions.filter(t => t.amount < 0).reduce((acc, t) => acc + Math.abs(parseFloat(t.amount)), 0);
+  // Only count completed/approved transactions for income & spent stats
+  const totalIncome = transactions.filter(t => parseFloat(t.amount) > 0 && t.status === 'completed').reduce((acc, t) => acc + parseFloat(t.amount), 0);
+  const totalSpent = transactions.filter(t => parseFloat(t.amount) < 0 && t.status === 'completed').reduce((acc, t) => acc + Math.abs(parseFloat(t.amount)), 0);
 
   const getTxIconData = (tx) => {
     if (tx.type === 'deposit') return { icon: FiArrowDownLeft, bg: '#dcfce7', color: '#16a34a' };
@@ -294,6 +301,15 @@ export default function Balance() {
                 'refund': 'Refund'
               };
 
+              // Status badge for deposit/withdrawal
+              const showStatusBadge = tx.type === 'deposit' || tx.type === 'withdrawal';
+              const statusBadge = {
+                pending: { label: 'Pending', bg: '#fef9c3', color: '#92400e', border: '#fde68a' },
+                completed: { label: tx.type === 'deposit' ? 'Approved' : 'Processed', bg: '#dcfce7', color: '#166534', border: '#bbf7d0' },
+                failed: { label: 'Rejected', bg: '#fee2e2', color: '#991b1b', border: '#fecaca' },
+                reversed: { label: 'Expired', bg: '#f3f4f6', color: '#6b7280', border: '#e5e7eb' },
+              }[tx.status] || { label: tx.status, bg: '#f3f4f6', color: '#6b7280', border: '#e5e7eb' };
+
               return (
                 <div
                   key={tx.id}
@@ -312,11 +328,23 @@ export default function Balance() {
                       <p className="text-[11px] font-medium text-gray-400 mt-0.5" title={tx.description}>
                         {formatDate12Hour(tx.created_at)}
                       </p>
+                      {showStatusBadge && (
+                        <span
+                          className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                          style={{ background: statusBadge.bg, color: statusBadge.color, border: `1px solid ${statusBadge.border}` }}
+                        >
+                          {statusBadge.label}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <span
                     className="font-black text-sm whitespace-nowrap"
-                    style={{ color: isPositive ? '#16a34a' : '#dc2626' }}
+                    style={{
+                      color: tx.type === 'deposit' && tx.status !== 'completed'
+                        ? '#9ca3af'
+                        : isPositive ? '#16a34a' : '#dc2626'
+                    }}
                   >
                     {isPositive ? '+' : ''}₹{Math.abs(parseFloat(tx.amount)).toFixed(2)}
                   </span>

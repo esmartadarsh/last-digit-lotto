@@ -37,7 +37,7 @@ export default function ManageUsers() {
     e.preventDefault();
     const { user, amount, type } = adjustModal;
     const amountNum = parseFloat(amount);
-    
+
     if (!user || isNaN(amountNum) || amountNum <= 0) return toast.error("Enter a valid positive amount");
 
     const finalAmount = type === 'add' ? amountNum : -amountNum;
@@ -172,11 +172,10 @@ export default function ManageUsers() {
                 <button
                   type="submit"
                   disabled={adjusting}
-                  className={`px-6 py-2.5 rounded-xl font-semibold transition-colors disabled:opacity-60 shadow-lg text-white ${
-                    adjustModal.type === 'add' 
-                    ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20' 
-                    : 'bg-red-600 hover:bg-red-500 shadow-red-500/20'
-                  }`}
+                  className={`px-6 py-2.5 rounded-xl font-semibold transition-colors disabled:opacity-60 shadow-lg text-white ${adjustModal.type === 'add'
+                      ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20'
+                      : 'bg-red-600 hover:bg-red-500 shadow-red-500/20'
+                    }`}
                 >
                   {adjusting ? 'Processing...' : (adjustModal.type === 'add' ? 'Add Balance' : 'Deduct Balance')}
                 </button>

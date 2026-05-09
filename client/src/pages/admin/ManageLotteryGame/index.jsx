@@ -38,7 +38,8 @@ function parsePastedNumbers(text, digits) {
 
 
 export default function ManageLotteryGame() {
-  const { token } = useAuthStore();
+  const { token, user } = useAuthStore();
+  const isSuperAdmin = user?.role === 'superadmin';
 
   // ── State ──
   const [games, setGames] = useState([]);
@@ -471,6 +472,7 @@ export default function ManageLotteryGame() {
         onDeleteDraw={handleDeleteDraw}
         onAnnounce={openResolveModal}
         onEditAnnounce={openEditResolveModal}
+        isSuperAdmin={isSuperAdmin}
       />
 
       {/* ── Multi-Prize Result Announcement Modal ── */}

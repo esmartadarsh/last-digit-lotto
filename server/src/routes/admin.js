@@ -390,6 +390,7 @@ router.get('/users', async (req, res) => {
       offset: (page - 1) * limit,
     });
 
+    return res.json({ success: true, total: count, users: rows });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }
