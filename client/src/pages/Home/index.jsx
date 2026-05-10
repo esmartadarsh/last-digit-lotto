@@ -101,7 +101,7 @@ export default function Home() {
             {lotteryDraws.length > 0 && (
                 <JackpotCard
                     draw={lotteryDraws[0]}
-                    onPlay={() => navigate(`/lottery-ticket/${lotteryDraws[0].game.slug}`)}
+                    onPlay={() => navigate(`/lottery-ticket/${lotteryDraws[0].game.slug}?drawId=${lotteryDraws[0].id}`)}
                 />
             )}
 
@@ -125,7 +125,7 @@ export default function Home() {
                                 key={draw.id}
                                 className="relative overflow-hidden rounded-2xl cursor-pointer active:scale-95 transition-all bg-gray-200"
                                 style={{ aspectRatio: '16/9' }}
-                                onClick={() => navigate(`/lottery-ticket/${draw.game.slug}`)}
+                                onClick={() => navigate(`/lottery-ticket/${draw.game.slug}?drawId=${draw.id}`)}
                             >
                                 {draw.banner_url || draw.game.banner_url ? (
                                     <img src={draw.banner_url || draw.game.banner_url} alt={draw.game.name} loading="lazy" className="w-full h-full object-cover" />
@@ -167,7 +167,7 @@ export default function Home() {
                                 key={draw.id}
                                 className="relative overflow-hidden rounded-2xl cursor-pointer active:scale-95 transition-all bg-gray-200"
                                 style={{ aspectRatio: '16/9' }}
-                                onClick={() => navigate(`/abc-ticket/${draw.game.slug}?date=${draw.groupedDate}`)}
+                                onClick={() => navigate(`/abc-ticket/${draw.game.slug}?drawId=${draw.id}&date=${draw.groupedDate}`)}
                             >
                                 {draw.banner_url || draw.game.banner_url ? (
                                     <img src={draw.banner_url || draw.game.banner_url} alt={draw.game.name} loading="lazy" className="w-full h-full object-cover" />

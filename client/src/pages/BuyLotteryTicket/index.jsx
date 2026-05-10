@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import formatTime from "@/utils/formatTime";
 import formatDate12Hour from "@/utils/formatDate12Hour";
 import toast from "react-hot-toast";
@@ -25,6 +25,9 @@ const JACKPOT_BALLS = ["8", "8", "C", "2", "0", "6", "6", "2"];
 export default function BuyLotteryTicket() {
   const navigate = useNavigate();
   const { game } = useParams();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const targetDrawId = queryParams.get('drawId');
   const { user, token, refreshProfile } = useAuthStore();
 
   /* ── API State ── */
@@ -64,7 +67,11 @@ export default function BuyLotteryTicket() {
         setLoading(true);
         const res = await api.get(`/games/${game}`);
         if (res.data.success && res.data.game.draws.length > 0) {
-          const draw = res.data.game.draws[0];
+          const draws = res.data.game.draws;
+          // If a specific drawId was passed via query param, use it; otherwise fall back to first
+          const draw = targetDrawId
+            ? draws.find(d => d.id === targetDrawId) || draws[0]
+            : draws[0];
           setActiveDraw(draw);
           setSelectedDate(draw.scheduled_at.split('T')[0]);
         }
@@ -75,7 +82,7 @@ export default function BuyLotteryTicket() {
       }
     };
     fetchGameAndDraw();
-  }, [game]);
+  }, [game, targetDrawId]);
 
   useEffect(() => {
     if (activeTab === "history" && recentResults.length === 0) {

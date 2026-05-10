@@ -199,8 +199,8 @@ export default function ManageWithdrawals() {
             key={tab.key}
             onClick={() => { setActiveTab(tab.key); setPage(1); }}
             className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === tab.key
-                ? 'bg-red-500/20 text-red-400 border border-red-500/40'
-                : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
+              ? 'bg-red-500/20 text-red-400 border border-red-500/40'
+              : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
               }`}
           >
             {tab.label}
@@ -285,7 +285,7 @@ export default function ManageWithdrawals() {
                           <div className="space-y-0.5">
                             <p className="text-white font-semibold text-xs truncate">{details.holder}</p>
                             <p className="font-mono text-blue-300 text-xs">
-                              {details.number ? `••••${details.number.slice(-4)}` : '—'}
+                              {details.number ? details.number : '—'}
                             </p>
                             <p className="text-slate-400 text-xs">{details.ifsc} · {details.bank}</p>
                           </div>
@@ -360,8 +360,8 @@ export default function ManageWithdrawals() {
               key={p}
               onClick={() => setPage(p)}
               className={`w-9 h-9 rounded-lg text-sm font-bold transition-colors ${page === p
-                  ? 'bg-red-500 text-white'
-                  : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                ? 'bg-red-500 text-white'
+                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                 }`}
             >
               {p}

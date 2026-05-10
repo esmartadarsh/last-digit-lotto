@@ -62,6 +62,7 @@ export default function BuyAbcTicket() {
     const location = useLocation();
     const queryParams = new URLSearchParams(location.search);
     const targetDate = queryParams.get("date");
+    const targetDrawId = queryParams.get("drawId");
 
     useEffect(() => {
         const fetchGameAndDraws = async () => {
@@ -85,6 +86,11 @@ export default function BuyAbcTicket() {
                     }
                     if (draws.length > 0) {
                         setApiDraws(draws);
+                        // If a specific drawId was passed, jump to that time slot
+                        if (targetDrawId) {
+                            const idx = draws.findIndex(d => d.id === targetDrawId);
+                            if (idx !== -1) setSelectedTimeIndex(idx);
+                        }
                     } else {
                         setApiDraws(res.data.game.draws);
                     }
@@ -96,7 +102,7 @@ export default function BuyAbcTicket() {
             }
         };
         fetchGameAndDraws();
-    }, [game, targetDate]);
+    }, [game, targetDate, targetDrawId]);
 
     useEffect(() => {
         if (activeTab === "history" && recentResults.length === 0) {
