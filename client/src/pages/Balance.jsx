@@ -420,29 +420,18 @@ export default function Balance() {
                   UTR below.
                 </p>
 
-                {/* Responsive Pay block */}
+                {/* Pay block — QR always visible */}
                 <div className="bg-gray-50 rounded-2xl p-4 mb-5 flex flex-col items-center border border-gray-100">
-                  <div className="hidden md:block w-full mb-2">
-                    <div className="bg-white p-3 rounded-xl mx-auto w-fit shadow-sm border border-gray-200">
-                      <QRCode
-                        value={`upi://pay?pa=9667479529@ptyes&pn=LotteryApp&am=${orderData?.amount}&cu=INR&tn=${orderData?.orderId}`}
-                        size={160}
-                      />
-                    </div>
-
-                    <p className="text-[10px] text-center text-gray-400 mt-2 font-bold uppercase tracking-wider">
-                      Scan to Pay using UPI
-                    </p>
+                  <div className="bg-white p-3 rounded-xl mx-auto w-fit shadow-sm border border-gray-200 mb-2">
+                    <QRCode
+                      value={`upi://pay?pa=9667479529@ptyes&pn=LotteryApp&am=${orderData?.amount}&cu=INR&tn=${orderData?.orderId}`}
+                      size={160}
+                    />
                   </div>
 
-                  <div className="md:hidden w-full">
-                    <a
-                      href={`upi://pay?pa=9667479529@ptyes&pn=LotteryApp&am=${orderData?.amount}&cu=INR&tn=${orderData?.orderId}`}
-                      className="flex items-center justify-center w-full py-3.5 rounded-xl font-black text-white bg-[#059669] active:scale-95 transition-transform"
-                    >
-                      Pay Now with UPI App
-                    </a>
-                  </div>
+                  <p className="text-[10px] text-center text-gray-400 mt-1 font-bold uppercase tracking-wider">
+                    Scan to Pay using UPI
+                  </p>
                 </div>
 
                 <div className="mb-6">
