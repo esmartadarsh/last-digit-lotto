@@ -18,6 +18,13 @@ const VALID_POSITIONS = {
   triple: ['ABC'],
 };
 
+// Max total qty that can be sold across ALL users per draw per combination
+const LIMITS = {
+  single: 1000,
+  double: 100,
+  triple: 100,
+};
+
 
 /**
  * POST /api/abc-tickets/purchase
@@ -33,7 +40,7 @@ router.post(
     body('selections.*.type').isIn(['single', 'double', 'triple']),
     body('selections.*.position').isString().notEmpty(),
     body('selections.*.digits').matches(/^[0-9]{1,3}$/).withMessage('digits must be 1–3 numeric chars'),
-    body('selections.*.qty').isInt({ min: 1, max: 100 }),
+    body('selections.*.qty').isInt({ min: 1, max: 1000 }),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -91,6 +98,25 @@ router.post(
           if (s.digits.length !== expectedLen) {
             throw Object.assign(
               new Error(`"${s.type}" requires exactly ${expectedLen} digit(s)`),
+              { status: 400 }
+            );
+          }
+
+          // Check ticket purchase limit (aggregate across all users for this draw)
+          const limit = LIMITS[s.type];
+          const existingSold = await AbcTicket.sum('qty', {
+            where: { draw_id: drawId, type: s.type, position: s.position, digits: s.digits },
+            transaction: t,
+          });
+          const alreadySold = existingSold || 0;
+          if (alreadySold + s.qty > limit) {
+            const remaining = Math.max(0, limit - alreadySold);
+            throw Object.assign(
+              new Error(
+                remaining === 0
+                  ? `Sold out: ${s.position}=${s.digits} has reached its limit of ${limit} tickets for this draw.`
+                  : `Only ${remaining} ticket(s) left for ${s.position}=${s.digits}. You requested ${s.qty}.`
+              ),
               { status: 400 }
             );
           }
@@ -180,6 +206,29 @@ router.get('/me/:drawId', authenticate, async (req, res) => {
       order: [['purchased_at', 'ASC']],
     });
     return res.json({ success: true, tickets });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/**
+ * GET /api/abc-tickets/limits/:drawId
+ * Returns per-combination sold qty so the client can show remaining capacity.
+ */
+router.get('/limits/:drawId', async (req, res) => {
+  try {
+    const sold = await AbcTicket.findAll({
+      attributes: [
+        'type',
+        'position',
+        'digits',
+        [sequelize.fn('SUM', sequelize.col('qty')), 'sold'],
+      ],
+      where: { draw_id: req.params.drawId },
+      group: ['type', 'position', 'digits'],
+      raw: true,
+    });
+    return res.json({ success: true, limits: LIMITS, sold });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }

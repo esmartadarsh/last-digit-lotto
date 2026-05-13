@@ -110,6 +110,19 @@ export default function Balance() {
     }
   };
 
+  const downloadQR = () => {
+    const canvas = document.getElementById('qr-canvas');
+    if (canvas) {
+      const pngUrl = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
+      let downloadLink = document.createElement("a");
+      downloadLink.href = pngUrl;
+      downloadLink.download = `Deposit_QR_${orderData?.orderId || 'Scan'}.png`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    }
+  };
+
   const handleWithdraw = async () => {
     const amount = Number(withdrawAmount);
     if (isNaN(amount) || amount < 100) {
@@ -420,13 +433,14 @@ export default function Balance() {
                   UTR below.
                 </p>
 
-                {/* Pay block — QR + UPI deep link for iOS */}
+                {/* Pay block — QR for iOS/Android */}
                 <div className="bg-gray-50 rounded-2xl p-4 mb-5 flex flex-col items-center border border-gray-100">
                   {/* Canvas-based QR — works reliably on iOS Safari / WebKit */}
                   <div
                     style={{ width: 168, height: 168, padding: 4, background: '#fff', borderRadius: 12, border: '1px solid #e5e7eb', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}
                   >
                     <QRCodeCanvas
+                      id="qr-canvas"
                       value={`upi://pay?pa=9667479529@ptyes&pn=LotteryApp&am=${orderData?.amount}&cu=INR&tn=${orderData?.orderId}`}
                       size={160}
                       width={160}
@@ -439,20 +453,19 @@ export default function Balance() {
                     Scan to Pay using UPI
                   </p>
 
-                  {/* Direct UPI deep-link — especially helpful for iPhone users */}
-                  <a
-                    href={`upi://pay?pa=9667479529@ptyes&pn=LotteryApp&am=${orderData?.amount}&cu=INR&tn=${orderData?.orderId}`}
-                    className="mt-3 w-full text-center py-2.5 rounded-xl text-[13px] font-black"
+                  {/* Download QR Button */}
+                  <button
+                    onClick={downloadQR}
+                    className="mt-3 w-full text-center py-2.5 rounded-xl text-[13px] font-black flex items-center justify-center gap-2 active:scale-95 transition-all"
                     style={{
-                      background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
-                      color: '#fff',
-                      textDecoration: 'none',
-                      display: 'block',
-                      boxShadow: '0 4px 12px rgba(79,70,229,0.3)',
+                      background: '#e0e7ff',
+                      color: '#4338ca',
+                      border: '1.5px solid #c7d2fe',
                     }}
                   >
-                    📱 Open in UPI App
-                  </a>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    Download QR Code
+                  </button>
                 </div>
 
                 <div className="mb-6">

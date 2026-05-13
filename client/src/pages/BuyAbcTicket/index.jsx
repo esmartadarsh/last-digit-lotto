@@ -56,65 +56,14 @@ export default function BuyAbcTicket() {
 
     const [activeTab, setActiveTab] = useState("buying");
     const [recentResults, setRecentResults] = useState([]);
-    
+    const [soldQty, setSoldQty] = useState({});
+
     const [showTimeAlert, setShowTimeAlert] = useState(false);
 
     const location = useLocation();
     const queryParams = new URLSearchParams(location.search);
     const targetDate = queryParams.get("date");
     const targetDrawId = queryParams.get("drawId");
-
-    useEffect(() => {
-        const fetchGameAndDraws = async () => {
-            try {
-                setLoading(true);
-                const res = await api.get(`/games/${game}`);
-                if (res.data.success && res.data.game.draws.length > 0) {
-                    let draws = res.data.game.draws;
-                    
-                    // Sort draws ascending by scheduled time
-                    draws.sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at));
-
-                    if (targetDate) {
-                        draws = draws.filter(d => {
-                            const dObj = new Date(d.scheduled_at);
-                            const y = dObj.getFullYear();
-                            const m = String(dObj.getMonth() + 1).padStart(2, '0');
-                            const day = String(dObj.getDate()).padStart(2, '0');
-                            return `${y}-${m}-${day}` === targetDate;
-                        });
-                    }
-                    if (draws.length > 0) {
-                        setApiDraws(draws);
-                        // If a specific drawId was passed, jump to that time slot
-                        if (targetDrawId) {
-                            const idx = draws.findIndex(d => d.id === targetDrawId);
-                            if (idx !== -1) setSelectedTimeIndex(idx);
-                        }
-                    } else {
-                        setApiDraws(res.data.game.draws);
-                    }
-                }
-            } catch (err) {
-                toast.error("Failed to load game details.");
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchGameAndDraws();
-    }, [game, targetDate, targetDrawId]);
-
-    useEffect(() => {
-        if (activeTab === "history" && recentResults.length === 0) {
-            api.get(`/results/abc/recent?game=${game}`)
-                .then(res => {
-                    if (res.data.success) setRecentResults(res.data.results);
-                })
-                .catch(err => console.error("Failed to load results", err));
-        }
-    }, [activeTab, game, recentResults.length]);
-
-    /* ── Tab + time slot ── */
 
     // time_slot is usually "1PM" or "8PM" from DB
     const [selectedTimeIndex, setSelectedTimeIndex] = useState(0);
@@ -269,6 +218,75 @@ export default function BuyAbcTicket() {
         }
     };
 
+
+    useEffect(() => {
+        const fetchGameAndDraws = async () => {
+            try {
+                setLoading(true);
+                const res = await api.get(`/games/${game}`);
+                if (res.data.success && res.data.game.draws.length > 0) {
+                    let draws = res.data.game.draws;
+
+                    // Sort draws ascending by scheduled time
+                    draws.sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at));
+
+                    if (targetDate) {
+                        draws = draws.filter(d => {
+                            const dObj = new Date(d.scheduled_at);
+                            const y = dObj.getFullYear();
+                            const m = String(dObj.getMonth() + 1).padStart(2, '0');
+                            const day = String(dObj.getDate()).padStart(2, '0');
+                            return `${y}-${m}-${day}` === targetDate;
+                        });
+                    }
+                    if (draws.length > 0) {
+                        setApiDraws(draws);
+                        // If a specific drawId was passed, jump to that time slot
+                        if (targetDrawId) {
+                            const idx = draws.findIndex(d => d.id === targetDrawId);
+                            if (idx !== -1) setSelectedTimeIndex(idx);
+                        }
+                    } else {
+                        setApiDraws(res.data.game.draws);
+                    }
+                }
+            } catch (err) {
+                toast.error("Failed to load game details.");
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchGameAndDraws();
+    }, [game, targetDate, targetDrawId]);
+
+    useEffect(() => {
+        if (activeTab === "history" && recentResults.length === 0) {
+            api.get(`/results/abc/recent?game=${game}`)
+                .then(res => {
+                    if (res.data.success) setRecentResults(res.data.results);
+                })
+                .catch(err => console.error("Failed to load results", err));
+        }
+    }, [activeTab, game, recentResults.length]);
+
+    // Fetch sold quantities for the active draw so we can show remaining capacity
+    useEffect(() => {
+        if (!activeDraw?.id) return;
+        setSoldQty({});
+        api.get(`/abc-tickets/limits/${activeDraw.id}`)
+            .then(res => {
+                if (res.data.success) {
+                    const map = {};
+                    res.data.sold.forEach(item => {
+                        map[`${item.type}|${item.position}|${item.digits}`] = parseInt(item.sold) || 0;
+                    });
+                    setSoldQty(map);
+                }
+            })
+            .catch(() => { });
+    }, [activeDraw?.id]);
+
+
     if (loading) {
         return <div className="min-h-screen flex items-center justify-center bg-[#f0f2f8]">Loading...</div>;
     }
@@ -324,6 +342,8 @@ export default function BuyAbcTicket() {
                     addSelection={addSelection}
                     quickGuess={quickGuess}
                     prices={prices}
+                    soldQty={soldQty}
+                    selections={selections}
                 />
             )}
 
