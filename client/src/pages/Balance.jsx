@@ -2,7 +2,7 @@ import { IoWalletOutline } from 'react-icons/io5';
 import { FiArrowDownLeft, FiArrowUpRight, FiTrendingUp } from 'react-icons/fi';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { QRCode } from 'react-qr-code';
+import { QRCodeCanvas } from 'qrcode.react';
 import useAuthStore from '../store/useAuthStore';
 import formatDate12Hour from '@/utils/formatDate12Hour';
 import api from '../config/api';
@@ -420,18 +420,39 @@ export default function Balance() {
                   UTR below.
                 </p>
 
-                {/* Pay block — QR always visible */}
+                {/* Pay block — QR + UPI deep link for iOS */}
                 <div className="bg-gray-50 rounded-2xl p-4 mb-5 flex flex-col items-center border border-gray-100">
-                  <div className="bg-white p-3 rounded-xl mx-auto w-fit shadow-sm border border-gray-200 mb-2">
-                    <QRCode
+                  {/* Canvas-based QR — works reliably on iOS Safari / WebKit */}
+                  <div
+                    style={{ width: 168, height: 168, padding: 4, background: '#fff', borderRadius: 12, border: '1px solid #e5e7eb', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}
+                  >
+                    <QRCodeCanvas
                       value={`upi://pay?pa=9667479529@ptyes&pn=LotteryApp&am=${orderData?.amount}&cu=INR&tn=${orderData?.orderId}`}
                       size={160}
+                      width={160}
+                      height={160}
+                      style={{ display: 'block' }}
                     />
                   </div>
 
-                  <p className="text-[10px] text-center text-gray-400 mt-1 font-bold uppercase tracking-wider">
+                  <p className="text-[10px] text-center text-gray-400 mt-2 font-bold uppercase tracking-wider">
                     Scan to Pay using UPI
                   </p>
+
+                  {/* Direct UPI deep-link — especially helpful for iPhone users */}
+                  <a
+                    href={`upi://pay?pa=9667479529@ptyes&pn=LotteryApp&am=${orderData?.amount}&cu=INR&tn=${orderData?.orderId}`}
+                    className="mt-3 w-full text-center py-2.5 rounded-xl text-[13px] font-black"
+                    style={{
+                      background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+                      color: '#fff',
+                      textDecoration: 'none',
+                      display: 'block',
+                      boxShadow: '0 4px 12px rgba(79,70,229,0.3)',
+                    }}
+                  >
+                    📱 Open in UPI App
+                  </a>
                 </div>
 
                 <div className="mb-6">
