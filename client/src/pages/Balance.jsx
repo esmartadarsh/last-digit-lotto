@@ -12,6 +12,7 @@ export default function Balance() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const [depositAmount, setDepositAmount] = useState('');
 
   // Phase 2 states
@@ -47,6 +48,13 @@ export default function Balance() {
     };
     fetchHistory();
   }, [token]);
+
+  useEffect(() => {
+    const check = () => setIsMobile(/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth <= 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   const handleDeposit = (amountToDeposit) => {
     console.log('reaching 1')
@@ -453,19 +461,42 @@ export default function Balance() {
                     Scan to Pay using UPI
                   </p>
 
-                  {/* Download QR Button */}
-                  <button
-                    onClick={downloadQR}
-                    className="mt-3 w-full text-center py-2.5 rounded-xl text-[13px] font-black flex items-center justify-center gap-2 active:scale-95 transition-all"
-                    style={{
-                      background: '#e0e7ff',
-                      color: '#4338ca',
-                      border: '1.5px solid #c7d2fe',
-                    }}
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                    Download QR Code
-                  </button>
+                  {/* Download QR & Click to Pay Buttons */}
+                  <div className="mt-3 flex items-center gap-2 w-full">
+                    {/* Icon-only Download button */}
+                    <button
+                      onClick={downloadQR}
+                      title="Download QR Code"
+                      className="flex-shrink-0 flex items-center justify-center active:scale-95 transition-all"
+                      style={{
+                        background: '#e0e7ff',
+                        color: '#4338ca',
+                        border: '1.5px solid #c7d2fe',
+                        borderRadius: 12,
+                        width: 44,
+                        height: 44,
+                      }}
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    </button>
+
+                    {/* Click to Pay — mobile only */}
+                    {isMobile && (
+                      <a
+                        href={`upi://pay?pa=9667479529@ptyes&pn=LotteryApp&am=${orderData?.amount}&cu=INR&tn=${orderData?.orderId}`}
+                        className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] bg-blue-600 active:bg-blue-700 font-black active:scale-95 transition-all"
+                        style={{
+                          color: '#fff',
+                          border: 'none',
+                          boxShadow: '0 4px 14px rgba(34,197,94,0.35)',
+                          textDecoration: 'none',
+                        }}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                        Open In Upi App
+                      </a>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mb-6">

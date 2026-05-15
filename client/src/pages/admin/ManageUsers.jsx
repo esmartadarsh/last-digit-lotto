@@ -8,19 +8,43 @@ export default function ManageUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Search/Pagination (simplified)
+  // Pagination & Search
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [total, setTotal] = useState(0);
+
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const goTo = (pg) => setPage(Math.min(Math.max(1, pg), totalPages));
+  const handleLimitChange = (v) => { setLimit(Number(v)); setPage(1); };
+  const pageNumbers = () => {
+    const range = [];
+    for (let i = Math.max(1, page - 2); i <= Math.min(totalPages, page + 2); i++) range.push(i);
+    return range;
+  };
 
   // Balance Adjustment Modal State
   const [adjustModal, setAdjustModal] = useState({ show: false, user: null, amount: '', type: 'add' });
   const [adjusting, setAdjusting] = useState(false);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await api.get(`/admin/users`);
+      const params = { page, limit };
+      if (debouncedSearch) params.search = debouncedSearch;
+      const res = await api.get(`/admin/users`, { params });
       if (res.data.success) {
         setUsers(res.data.users);
+        setTotal(res.data.total);
       }
     } catch (err) {
       toast.error("Failed to fetch users");
@@ -31,7 +55,7 @@ export default function ManageUsers() {
 
   useEffect(() => {
     fetchUsers();
-  }, [token]);
+  }, [token, page, limit, debouncedSearch]);
 
   const handleAdjustBalance = async (e) => {
     e.preventDefault();
@@ -59,13 +83,6 @@ export default function ManageUsers() {
     }
   };
 
-  const filteredUsers = users.filter(u => {
-    const s = search.toLowerCase();
-    return (u.email?.toLowerCase().includes(s) ||
-      u.name?.toLowerCase().includes(s) ||
-      u.phone?.toLowerCase().includes(s));
-  });
-
   return (
     <div className="space-y-6 flex flex-col max-w-[1200px] w-full mx-auto">
       <div className="flex justify-between items-center mb-4">
@@ -77,6 +94,19 @@ export default function ManageUsers() {
           onChange={e => setSearch(e.target.value)}
           className="bg-[#1e293b] border border-[#334155] rounded-xl px-4 py-2 text-white focus:outline-none focus:border-blue-500 w-64 transition-colors"
         />
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-xs text-slate-400">
+          <span>Rows per page:</span>
+          <select value={limit} onChange={e => handleLimitChange(e.target.value)}
+            className="bg-[#0f172a] border border-[#334155] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-indigo-500 transition-colors">
+            {[10, 20, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+          <span className="text-slate-500">
+            {total > 0 ? `${(page-1)*limit+1}–${Math.min(page*limit, total)} of ${total}` : '0 results'}
+          </span>
+        </div>
       </div>
 
       <div className="bg-[#1e293b]/80 backdrop-blur border border-[#334155] rounded-2xl shadow-xl overflow-hidden">
@@ -91,10 +121,18 @@ export default function ManageUsers() {
           </thead>
           <tbody className="divide-y divide-[#334155]">
             {loading ? (
-              <tr><td colSpan="4" className="text-center py-8">Loading users...</td></tr>
-            ) : filteredUsers.length === 0 ? (
-              <tr><td colSpan="4" className="text-center py-8">No users found.</td></tr>
-            ) : filteredUsers.map((u) => (
+              <tr><td colSpan="4" className="text-center py-12">
+                <div className="flex flex-col items-center gap-2 text-slate-500">
+                  <svg className="w-5 h-5 animate-spin text-indigo-400" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                  </svg>
+                  <span className="text-sm">Loading users…</span>
+                </div>
+              </td></tr>
+            ) : users.length === 0 ? (
+              <tr><td colSpan="4" className="text-center py-8 text-slate-500 text-sm">No users found.</td></tr>
+            ) : users.map((u) => (
               <tr key={u.id} className="hover:bg-slate-800/50 transition-colors">
                 <td className="px-6 py-4">
                   <span className="font-bold text-white block">{u.name}</span>
@@ -130,6 +168,26 @@ export default function ManageUsers() {
             ))}
           </tbody>
         </table>
+
+        {/* Paginator */}
+        {totalPages > 1 && (
+          <div className="px-6 py-4 border-t border-[#334155] flex items-center justify-center gap-1.5 bg-[#0f172a]">
+            <button onClick={() => goTo(page - 1)} disabled={page === 1}
+              className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#1e293b] border border-[#334155] text-slate-400 hover:text-white hover:border-indigo-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            {pageNumbers()[0] > 1 && (<><button onClick={() => goTo(1)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#1e293b] border border-[#334155] text-slate-400 hover:text-white hover:border-indigo-500 transition-all text-xs font-semibold">1</button>{pageNumbers()[0] > 2 && <span className="text-slate-600 text-xs px-1">…</span>}</>)}
+            {pageNumbers().map(pg => (
+              <button key={pg} onClick={() => goTo(pg)}
+                className={`w-8 h-8 flex items-center justify-center rounded-lg border text-xs font-semibold transition-all ${pg === page ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-500/25' : 'bg-[#1e293b] border-[#334155] text-slate-400 hover:text-white hover:border-indigo-500'}`}>{pg}</button>
+            ))}
+            {pageNumbers()[pageNumbers().length - 1] < totalPages && (<>{pageNumbers()[pageNumbers().length - 1] < totalPages - 1 && <span className="text-slate-600 text-xs px-1">…</span>}<button onClick={() => goTo(totalPages)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#1e293b] border border-[#334155] text-slate-400 hover:text-white hover:border-indigo-500 transition-all text-xs font-semibold">{totalPages}</button></>)}
+            <button onClick={() => goTo(page + 1)} disabled={page === totalPages}
+              className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#1e293b] border border-[#334155] text-slate-400 hover:text-white hover:border-indigo-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── Balance Adjustment Modal ── */}

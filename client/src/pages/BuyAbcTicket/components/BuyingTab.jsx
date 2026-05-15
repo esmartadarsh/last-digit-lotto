@@ -131,10 +131,19 @@ function QuantityStepper({ qty, onChange, max }) {
 
     const handleInputChange = (e) => {
         let val = e.target.value.replace(/\D/g, "");
-        setInputValue(val);
         const num = parseInt(val, 10);
+
         if (!isNaN(num) && num >= 1) {
-            onChange(clamp(num));
+            // Clamp immediately so the display NEVER shows a value above max.
+            // Previously setInputValue(val) ran first — when clamp(num) === qty
+            // React bailed on the re-render and useEffect never corrected the display,
+            // leaving the raw typed value visible and bypassing the limit on ADD.
+            const clamped = clamp(num);
+            setInputValue(clamped);
+            onChange(clamped);
+        } else {
+            // Allow empty / mid-delete state in the display only
+            setInputValue(val);
         }
     };
 

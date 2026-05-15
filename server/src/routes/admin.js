@@ -144,15 +144,20 @@ router.delete('/draws/:drawId/banner', async (req, res) => {
  */
 router.get('/draws', async (req, res) => {
   try {
-    const { status, page = 1, limit = 20 } = req.query;
+    const { status, game_type, page = 1, limit = 20 } = req.query;
     const where = status ? { status } : {};
+
+    // Build game include — filter by type when game_type param is provided
+    const gameInclude = game_type
+      ? { model: Game, as: 'game', where: { type: game_type }, required: true }
+      : { model: Game, as: 'game' };
 
     const { count, rows } = await Draw.findAndCountAll({
       where,
-      include: [{ model: Game, as: 'game' }],
+      include: [gameInclude],
       order: [['scheduled_at', 'DESC']],
       limit: parseInt(limit),
-      offset: (page - 1) * limit,
+      offset: (parseInt(page) - 1) * parseInt(limit),
     });
 
     return res.json({ success: true, total: count, draws: rows });

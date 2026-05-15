@@ -44,9 +44,8 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel, confirmLabe
           </button>
           <button
             onClick={onConfirm}
-            className={`flex-[1.5] py-3 rounded-xl font-black text-white transition-colors ${
-              danger ? 'bg-red-600 hover:bg-red-500' : 'bg-emerald-600 hover:bg-emerald-500'
-            }`}
+            className={`flex-[1.5] py-3 rounded-xl font-black text-white transition-colors ${danger ? 'bg-red-600 hover:bg-red-500' : 'bg-emerald-600 hover:bg-emerald-500'
+              }`}
           >
             {confirmLabel}
           </button>
@@ -174,11 +173,10 @@ export default function ManageDeposits() {
           <button
             key={tab.key}
             onClick={() => { setActiveTab(tab.key); setPage(1); }}
-            className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
-              activeTab === tab.key
+            className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === tab.key
                 ? 'bg-red-500/20 text-red-400 border border-red-500/40'
                 : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
-            }`}
+              }`}
           >
             {tab.label}
           </button>
@@ -286,11 +284,10 @@ export default function ManageDeposits() {
                               onClick={() => setApproveModal({ tx })}
                               disabled={!hasUtr}
                               title={!hasUtr ? 'Cannot approve: user has not submitted UTR yet' : 'Approve deposit'}
-                              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors ${
-                                hasUtr
+                              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors ${hasUtr
                                   ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
                                   : 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                              }`}
+                                }`}
                             >
                               <FiCheckCircle size={13} /> Approve
                             </button>
@@ -321,11 +318,10 @@ export default function ManageDeposits() {
             <button
               key={p}
               onClick={() => setPage(p)}
-              className={`w-9 h-9 rounded-lg text-sm font-bold transition-colors ${
-                page === p
+              className={`w-9 h-9 rounded-lg text-sm font-bold transition-colors ${page === p
                   ? 'bg-red-500 text-white'
                   : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-              }`}
+                }`}
             >
               {p}
             </button>

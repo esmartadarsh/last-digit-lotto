@@ -15,10 +15,20 @@ const BOX_META = [
   { label: 'N', type: 'tel' },
 ];
 
+const LIMIT_OPTIONS = [10, 20, 50];
+
 export default function ManageDraws() {
   const { token } = useAuthStore();
   const [draws, setDraws] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // ── Pagination & filter state ──
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [total, setTotal] = useState(0);
+  const [statusFilter, setStatusFilter] = useState('');
+
+  const totalPages = Math.max(1, Math.ceil(total / limit));
 
   const [selectedDraw, setSelectedDraw] = useState(null);
 
@@ -31,11 +41,17 @@ export default function ManageDraws() {
   const [digitB, setDigitB] = useState('');
   const [digitC, setDigitC] = useState('');
 
-  const fetchDraws = async () => {
+  // fetchDraws reads current state via useEffect dependency array
+  const fetchDraws = async (pg, lmt, sf) => {
     try {
       setLoading(true);
-      const res = await api.get(`/admin/draws`);
-      if (res.data.success) setDraws(res.data.draws);
+      const params = { page: pg, limit: lmt };
+      if (sf) params.status = sf;
+      const res = await api.get(`/admin/draws`, { params });
+      if (res.data.success) {
+        setDraws(res.data.draws);
+        setTotal(res.data.total);
+      }
     } catch (err) {
       toast.error("Failed to fetch draws");
     } finally {
@@ -43,7 +59,11 @@ export default function ManageDraws() {
     }
   };
 
-  useEffect(() => { fetchDraws(); }, [token]);
+  useEffect(() => { fetchDraws(page, limit, statusFilter); }, [token, page, limit, statusFilter]);
+
+  // ── Filter helpers (reset page to 1) ──
+  const handleStatusChange = (val) => { setStatusFilter(val); setPage(1); };
+  const handleLimitChange  = (val) => { setLimit(Number(val)); setPage(1); };
 
   const openModal = (draw) => {
     setSelectedDraw(draw);
@@ -85,7 +105,7 @@ export default function ManageDraws() {
       toast.loading("Closing draw...", { id: 'close' });
       const res = await api.put(`/admin/draws/${drawId}/close`);
       toast.success(res.data.message || 'Draw closed', { id: 'close' });
-      fetchDraws();
+      fetchDraws(page, limit, statusFilter);
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to close draw", { id: 'close' });
     }
@@ -103,7 +123,7 @@ export default function ManageDraws() {
           { drawId: selectedDraw.id, winningNumber }
         );
         toast.success(res.data.message || 'Result announced!', { id: 'resolve' });
-        closeModal(); fetchDraws();
+        closeModal(); fetchDraws(page, limit, statusFilter);
       } catch (err) {
         toast.error(err.response?.data?.message || "Failed to resolve draw", { id: 'resolve' });
       }
@@ -116,21 +136,61 @@ export default function ManageDraws() {
           { drawId: selectedDraw.id, a, b, c }
         );
         toast.success(res.data.message || 'Result announced!', { id: 'resolve' });
-        closeModal(); fetchDraws();
+        closeModal(); fetchDraws(page, limit, statusFilter);
       } catch (err) {
         toast.error(err.response?.data?.message || "Failed to resolve draw", { id: 'resolve' });
       }
     }
   };
 
+  // ── Pagination helpers ──
+  const goTo = (pg) => setPage(Math.min(Math.max(1, pg), totalPages));
+  const pageNumbers = () => {
+    const delta = 2;
+    const range = [];
+    for (let i = Math.max(1, page - delta); i <= Math.min(totalPages, page + delta); i++) range.push(i);
+    return range;
+  };
+
   return (
-    <div className="space-y-6 flex flex-col max-w-[1200px] w-full mx-auto">
-      {/* <div className="flex justify-between items-center mb-4">
-        <h1 className="text-3xl font-bold tracking-tight text-white">Manage Draws</h1>
-        <button className="bg-red-600 hover:bg-red-500 text-white px-5 py-2.5 rounded-lg font-semibold transition-colors shadow-lg shadow-red-500/20">
-          + Create Draw (Auto)
-        </button>
-      </div> */}
+    <div className="space-y-4 flex flex-col max-w-[1200px] w-full mx-auto">
+
+      {/* ── Filter / Controls Bar ── */}
+      <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+        {/* Status filter tabs */}
+        <div className="flex items-center gap-1 bg-[#0f172a] border border-[#334155] rounded-xl p-1">
+          {[{v:'',l:'All'},{v:'open',l:'Open'},{v:'closed',l:'Closed'},{v:'completed',l:'Completed'}].map(opt => (
+            <button
+              key={opt.v}
+              onClick={() => handleStatusChange(opt.v)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                statusFilter === opt.v
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+              }`}
+            >
+              {opt.l}
+            </button>
+          ))}
+        </div>
+
+        {/* Rows-per-page + record count */}
+        <div className="flex items-center gap-2 text-xs text-slate-400">
+          <span>Rows per page:</span>
+          <select
+            value={limit}
+            onChange={e => handleLimitChange(e.target.value)}
+            className="bg-[#0f172a] border border-[#334155] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-indigo-500 transition-colors"
+          >
+            {LIMIT_OPTIONS.map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+          <span className="text-slate-500">
+            {total > 0
+              ? `${(page - 1) * limit + 1}–${Math.min(page * limit, total)} of ${total}`
+              : '0 results'}
+          </span>
+        </div>
+      </div>
 
       <div className="bg-[#1e293b]/80 backdrop-blur border border-[#334155] rounded-2xl shadow-xl overflow-hidden">
         <table className="w-full text-left text-sm text-slate-300">
@@ -144,9 +204,23 @@ export default function ManageDraws() {
           </thead>
           <tbody className="divide-y divide-[#334155]">
             {loading ? (
-              <tr><td colSpan="4" className="text-center py-8">Loading draws...</td></tr>
+              <tr>
+                <td colSpan="4" className="text-center py-12">
+                  <div className="flex flex-col items-center gap-2 text-slate-500">
+                    <svg className="w-5 h-5 animate-spin text-indigo-400" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                    </svg>
+                    <span className="text-sm">Loading draws…</span>
+                  </div>
+                </td>
+              </tr>
             ) : draws.length === 0 ? (
-              <tr><td colSpan="4" className="text-center py-8">No draws found.</td></tr>
+              <tr>
+                <td colSpan="4" className="text-center py-12 text-slate-500 text-sm">
+                  No draws found{statusFilter ? ` with status "${statusFilter}"` : ''}.
+                </td>
+              </tr>
             ) : draws.map((draw) => (
               <tr key={draw.id} className="hover:bg-slate-800/50 transition-colors">
                 <td className="px-6 py-4">
@@ -188,9 +262,50 @@ export default function ManageDraws() {
             ))}
           </tbody>
         </table>
+        
+        {totalPages > 1 && (
+          <div className="px-6 py-4 border-t border-[#334155] flex items-center justify-center gap-1.5 bg-[#0f172a]">
+            {/* Prev */}
+            <button onClick={() => goTo(page - 1)} disabled={page === 1}
+              className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#1e293b] border border-[#334155] text-slate-400 hover:text-white hover:border-indigo-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg>
+            </button>
+
+            {/* First + ellipsis */}
+            {pageNumbers()[0] > 1 && (
+              <>
+                <button onClick={() => goTo(1)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#1e293b] border border-[#334155] text-slate-400 hover:text-white hover:border-indigo-500 transition-all text-xs font-semibold">1</button>
+                {pageNumbers()[0] > 2 && <span className="text-slate-600 text-xs px-1">…</span>}
+              </>
+            )}
+
+            {/* Page buttons */}
+            {pageNumbers().map(pg => (
+              <button key={pg} onClick={() => goTo(pg)}
+                className={`w-8 h-8 flex items-center justify-center rounded-lg border text-xs font-semibold transition-all ${
+                  pg === page
+                    ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-500/25'
+                    : 'bg-[#1e293b] border-[#334155] text-slate-400 hover:text-white hover:border-indigo-500'
+                }`}>{pg}</button>
+            ))}
+
+            {/* Last + ellipsis */}
+            {pageNumbers()[pageNumbers().length - 1] < totalPages && (
+              <>
+                {pageNumbers()[pageNumbers().length - 1] < totalPages - 1 && <span className="text-slate-600 text-xs px-1">…</span>}
+                <button onClick={() => goTo(totalPages)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#1e293b] border border-[#334155] text-slate-400 hover:text-white hover:border-indigo-500 transition-all text-xs font-semibold">{totalPages}</button>
+              </>
+            )}
+
+            {/* Next */}
+            <button onClick={() => goTo(page + 1)} disabled={page === totalPages}
+              className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#1e293b] border border-[#334155] text-slate-400 hover:text-white hover:border-indigo-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* ── Resolve Modal ── */}
       {selectedDraw && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-[#1e293b] border border-[#334155] p-8 rounded-2xl max-w-lg w-full shadow-2xl">
@@ -200,10 +315,7 @@ export default function ManageDraws() {
             {/* ── Lottery: 8 individual boxes ── */}
             {selectedDraw.game.type === 'lottery' && (
               <div className="mb-6">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-                  Winning Ticket
-                  {/* &nbsp;·&nbsp; Format: N · N · <span className="text-red-400">L</span> · N · N · N · N · N */}
-                </p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Winning Ticket</p>
                 <div className="flex gap-1.5 justify-between">
                   {BOX_META.map((meta, i) => (
                     <div key={i} className="flex flex-col items-center gap-1 flex-1">
@@ -236,7 +348,6 @@ export default function ManageDraws() {
                     </div>
                   ))}
                 </div>
-                {/* Preview */}
                 {winningBoxes.every(b => b !== '') && (
                   <div className="mt-3 py-2 rounded-xl text-center font-black tracking-[0.3em] text-lg"
                     style={{ background: '#0f172a', border: '1.5px solid #334155', color: '#e2e8f0' }}>

@@ -73,9 +73,9 @@ export default function AdminDashboard() {
       )}
 
       {/* Placeholder Chart / Graph section */}
-      <div className="w-full bg-[#1e293b]/80 backdrop-blur border border-slate-700/50 p-8 rounded-2xl shadow-xl mt-8 min-h-[300px] flex items-center justify-center text-slate-500 font-medium">
+      {/* <div className="w-full bg-[#1e293b]/80 backdrop-blur border border-slate-700/50 p-8 rounded-2xl shadow-xl mt-8 min-h-[300px] flex items-center justify-center text-slate-500 font-medium">
         [Revenue Graph Placeholder]
-      </div>
+      </div> */}
     </div>
   );
 }

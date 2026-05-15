@@ -21,12 +21,21 @@ export default function ManageTickets() {
   const [type, setType] = useState('lottery'); // 'lottery' or 'abc'
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const LIMIT = 50;
+  const [limit, setLimit] = useState(50);
+
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const goTo = (pg) => setPage(Math.min(Math.max(1, pg), totalPages));
+  const handleLimitChange = (v) => { setLimit(Number(v)); setPage(1); };
+  const pageNumbers = () => {
+    const range = [];
+    for (let i = Math.max(1, page - 2); i <= Math.min(totalPages, page + 2); i++) range.push(i);
+    return range;
+  };
 
   const fetchTickets = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page, limit: LIMIT, type });
+      const params = new URLSearchParams({ page, limit, type });
       const res = await api.get(`/admin/tickets?${params}`);
       if (res.data.success) {
         setTickets(res.data.tickets);
@@ -37,7 +46,7 @@ export default function ManageTickets() {
     } finally {
       setLoading(false);
     }
-  }, [type, page]);
+  }, [type, page, limit]);
 
   useEffect(() => {
     fetchTickets();
@@ -46,8 +55,6 @@ export default function ManageTickets() {
   const filtered = tickets.filter((t) => {
     if (!search) return true;
     const s = search.toLowerCase();
-
-    // search by user name, email, or ticket number / digits
     const ticketStr = type === 'lottery' ? t.ticket_number : t.digits;
     return (
       t.user?.name?.toLowerCase().includes(s) ||
@@ -55,8 +62,6 @@ export default function ManageTickets() {
       ticketStr?.toLowerCase().includes(s)
     );
   });
-
-  const totalPages = Math.ceil(total / LIMIT);
 
   return (
     <div className="space-y-6 max-w-[1200px] w-full mx-auto">
@@ -87,6 +92,18 @@ export default function ManageTickets() {
             <p className={`text-xl font-black ${s.color}`}>{s.value}</p>
           </div>
         ))}
+      </div>
+
+      {/* Rows-per-page + record count */}
+      <div className="flex items-center gap-2 text-xs text-slate-400">
+        <span>Rows per page:</span>
+        <select value={limit} onChange={e => handleLimitChange(e.target.value)}
+          className="bg-[#0f172a] border border-[#334155] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-indigo-500 transition-colors">
+          {[20, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
+        </select>
+        <span className="text-slate-500">
+          {total > 0 ? `${(page-1)*limit+1}–${Math.min(page*limit, total)} of ${total}` : '0 results'}
+        </span>
       </div>
 
       {/* Filter tabs */}
@@ -122,7 +139,13 @@ export default function ManageTickets() {
       {/* Table */}
       <div className="bg-[#1e293b] rounded-2xl border border-slate-700/60 overflow-hidden shadow-xl">
         {loading ? (
-          <div className="py-20 text-center text-slate-500 font-medium">Loading tickets...</div>
+          <div className="py-20 flex flex-col items-center gap-2 text-slate-500">
+            <svg className="w-6 h-6 animate-spin text-indigo-400" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+            </svg>
+            <span className="text-sm font-medium">Loading tickets…</span>
+          </div>
         ) : filtered.length === 0 ? (
           <div className="py-20 text-center">
             <FiTag size={36} className="mx-auto text-slate-700 mb-3" />
@@ -236,19 +259,32 @@ export default function ManageTickets() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex justify-center gap-2">
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <button
-              key={p}
-              onClick={() => setPage(p)}
-              className={`w-9 h-9 rounded-lg text-sm font-bold transition-colors ${page === p
-                  ? 'bg-red-500 text-white'
-                  : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-                }`}
-            >
-              {p}
-            </button>
+        <div className="flex items-center justify-center gap-1.5">
+          {/* Prev */}
+          <button onClick={() => goTo(page - 1)} disabled={page === 1}
+            className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#1e293b] border border-[#334155] text-slate-400 hover:text-white hover:border-indigo-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg>
+          </button>
+
+          {/* First + ellipsis */}
+          {pageNumbers()[0] > 1 && (<><button onClick={() => goTo(1)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#1e293b] border border-[#334155] text-slate-400 hover:text-white hover:border-indigo-500 transition-all text-xs font-semibold">1</button>{pageNumbers()[0] > 2 && <span className="text-slate-600 text-xs px-1">…</span>}</>)}
+
+          {/* Page buttons */}
+          {pageNumbers().map(pg => (
+            <button key={pg} onClick={() => goTo(pg)}
+              className={`w-8 h-8 flex items-center justify-center rounded-lg border text-xs font-semibold transition-all ${
+                pg === page ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-500/25' : 'bg-[#1e293b] border-[#334155] text-slate-400 hover:text-white hover:border-indigo-500'
+              }`}>{pg}</button>
           ))}
+
+          {/* Last + ellipsis */}
+          {pageNumbers()[pageNumbers().length - 1] < totalPages && (<>{pageNumbers()[pageNumbers().length - 1] < totalPages - 1 && <span className="text-slate-600 text-xs px-1">…</span>}<button onClick={() => goTo(totalPages)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#1e293b] border border-[#334155] text-slate-400 hover:text-white hover:border-indigo-500 transition-all text-xs font-semibold">{totalPages}</button></>)}
+
+          {/* Next */}
+          <button onClick={() => goTo(page + 1)} disabled={page === totalPages}
+            className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#1e293b] border border-[#334155] text-slate-400 hover:text-white hover:border-indigo-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+          </button>
         </div>
       )}
 

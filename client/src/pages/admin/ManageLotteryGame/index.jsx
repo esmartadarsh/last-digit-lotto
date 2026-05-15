@@ -69,35 +69,44 @@ export default function ManageLotteryGame() {
   const [bannerPreview, setBannerPreview] = useState(null);
   const [uploadingBanner, setUploadingBanner] = useState(false);
 
-  // ── Resolve / Announce Result ──
+  // Resolve / Announce Result
   const [resolveDraw, setResolveDraw] = useState(null);
   const [editResolveDraw, setEditResolveDraw] = useState(null);
   const [resolving, setResolving] = useState(false);
-  // 1st prize — 8 individual boxes
   const [firstBoxes, setFirstBoxes] = useState(Array(8).fill(''));
   const firstRefs = useRef([]);
-  // Paste-based prizes  { second: [], third: [], fourth: [], fifth: [] }
   const [prizeNumbers, setPrizeNumbers] = useState({ second: [], third: [], fourth: [], fifth: [] });
-  // Textarea draft values per prize
   const [pasteDraft, setPasteDraft] = useState({ second: '', third: '', fourth: '', fifth: '' });
-  // Result image
   const [resultImageFile, setResultImageFile] = useState(null);
   const [resultImagePreview, setResultImagePreview] = useState(null);
 
-  // ── Fetchers ──
-  const fetchGames = async () => {
-    try {
-      setLoadingGames(true);
-      const res = await api.get(`/admin/draws`, {
-        params: { limit: 200 }
-      });
-      // Get all draws, extract unique lottery games from them
-      const allDraws = res.data.draws || [];
-      const lotteryDraws = allDraws.filter(d => d.game?.type === 'lottery');
-      setDraws(lotteryDraws);
+  // ── Pagination ──
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [total, setTotal] = useState(0);
+  const [statusFilter, setStatusFilter] = useState('');
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const handleStatusChange = (v) => { setStatusFilter(v); setPage(1); };
+  const handleLimitChange  = (v) => { setLimit(Number(v)); setPage(1); };
+  const goTo = (pg) => setPage(Math.min(Math.max(1, pg), totalPages));
+  const pageNumbers = () => {
+    const range = [];
+    for (let i = Math.max(1, page - 2); i <= Math.min(totalPages, page + 2); i++) range.push(i);
+    return range;
+  };
 
-      // fetch game list separately
-      const gRes = await api.get(`/games`);
+  // ── Fetchers ──
+  const fetchGames = async (pg = page, lmt = limit, sf = statusFilter) => {
+    try {
+      setLoadingDraws(true);
+      const params = { game_type: 'lottery', page: pg, limit: lmt };
+      if (sf) params.status = sf;
+      const [drawsRes, gRes] = await Promise.all([
+        api.get(`/admin/draws`, { params }),
+        api.get(`/games`)
+      ]);
+      setDraws(drawsRes.data.draws || []);
+      setTotal(drawsRes.data.total || 0);
       setGames((gRes.data.games || []).filter(g => g.type === 'lottery'));
     } catch (err) {
       toast.error('Failed to load data');
@@ -107,7 +116,7 @@ export default function ManageLotteryGame() {
     }
   };
 
-  useEffect(() => { fetchGames(); }, [token]);
+  useEffect(() => { fetchGames(page, limit, statusFilter); }, [token, page, limit, statusFilter]);
 
   // ── Create Game ──
   const handleCreateGame = async (e) => {
@@ -184,7 +193,7 @@ export default function ManageLotteryGame() {
     try {
       await api.put(`/admin/draws/${drawId}/close`);
       toast.success('Draw closed!');
-      fetchGames();
+      fetchGames(page, limit, statusFilter);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to close draw');
     }
@@ -196,7 +205,7 @@ export default function ManageLotteryGame() {
     try {
       await api.delete(`/admin/draws/${drawId}`);
       toast.success('Draw deleted!');
-      fetchGames();
+      fetchGames(page, limit, statusFilter);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete draw');
     }
@@ -356,7 +365,7 @@ export default function ManageLotteryGame() {
       });
       toast.success('Results announced & payouts processed!');
       closeResolveModal();
-      fetchGames();
+      fetchGames(page, limit, statusFilter);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to announce result');
     } finally {
@@ -400,7 +409,7 @@ export default function ManageLotteryGame() {
       });
       toast.success('Result updated successfully!');
       closeResolveModal();
-      fetchGames();
+      fetchGames(page, limit, statusFilter);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update result');
     } finally {
@@ -473,6 +482,12 @@ export default function ManageLotteryGame() {
         onAnnounce={openResolveModal}
         onEditAnnounce={openEditResolveModal}
         isSuperAdmin={isSuperAdmin}
+        page={page} totalPages={totalPages} total={total} limit={limit}
+        statusFilter={statusFilter}
+        onStatusChange={handleStatusChange}
+        onLimitChange={handleLimitChange}
+        onGoTo={goTo}
+        pageNumbers={pageNumbers}
       />
 
       {/* ── Multi-Prize Result Announcement Modal ── */}
