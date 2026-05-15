@@ -12,11 +12,11 @@ const MENU_ITEMS = [
   //   iconBg: '#eff6ff', iconColor: '#2563eb',
   //   badge: null,
   // },
-  {
-    icon: FiBell, label: 'Notifications', sub: 'Alerts & updates',
-    iconBg: '#fff7ed', iconColor: '#ea580c',
-    badge: '3',
-  },
+  // {
+  //   icon: FiBell, label: 'Notifications', sub: 'Alerts & updates',
+  //   iconBg: '#fff7ed', iconColor: '#ea580c',
+  //   badge: '3',
+  // },
   // {
   //   icon: FiShield, label: 'Security', sub: '2FA enabled',
   //   iconBg: '#f0fdf4', iconColor: '#16a34a',
@@ -33,9 +33,13 @@ const MENU_ITEMS = [
   //   badge: null,
   // },
   {
-    icon: FiHelpCircle, label: 'Help & Support', sub: '24/7 live chat',
-    iconBg: '#eff6ff', iconColor: '#0284c7',
+    icon: FiHelpCircle,
+    label: 'Help & Support',
+    sub: '24/7 live chat',
+    iconBg: '#eff6ff',
+    iconColor: '#0284c7',
     badge: null,
+    link: 'https://t.me/adijoshi13',
   },
 ];
 
@@ -217,6 +221,11 @@ export default function Profile() {
             {MENU_ITEMS.map((item, idx) => (
               <button
                 key={idx}
+                onClick={() => {
+                  if (item.link) {
+                    window.open(item.link, '_blank');
+                  }
+                }}
                 className="w-full flex items-center justify-between px-4 py-3.5 transition-all active:bg-gray-50 group"
                 style={{
                   borderBottom: idx < MENU_ITEMS.length - 1 ? '1px solid #f9fafb' : 'none',
