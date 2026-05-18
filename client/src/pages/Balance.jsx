@@ -449,7 +449,7 @@ export default function Balance() {
                   >
                     <QRCodeCanvas
                       id="qr-canvas"
-                      value={`upi://pay?pa=9667479529@ptyes&pn=LotteryApp&am=${orderData?.amount}&cu=INR&tn=${orderData?.orderId}`}
+                      value={`upi://pay?pa=gpay-12200293398@okbizaxis&pn=LotteryApp&am=${orderData?.amount}&cu=INR&tn=${orderData?.orderId}`}
                       size={160}
                       width={160}
                       height={160}
@@ -483,7 +483,7 @@ export default function Balance() {
                     {/* Click to Pay — mobile only */}
                     {isMobile && (
                       <a
-                        href={`upi://pay?pa=9667479529@ptyes&pn=LotteryApp&am=${orderData?.amount}&cu=INR&tn=${orderData?.orderId}`}
+                        href={`upi://pay?pa=gpay-12200293398@okbizaxis&pn=LotteryApp&am=${orderData?.amount}&cu=INR&tn=${orderData?.orderId}`}
                         className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] bg-blue-600 active:bg-blue-700 font-black active:scale-95 transition-all"
                         style={{
                           color: '#fff',
