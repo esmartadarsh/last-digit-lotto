@@ -206,7 +206,7 @@ export default function Balance() {
         }}
       >
         <h1 className="text-[22px] font-black text-white tracking-tight">My Wallet 💳</h1>
-        <p className="text-emerald-100 text-xs font-medium mt-0.5">Manage your funds securely</p>
+        <p className="text-emerald-100 text-xs font-medium mt-0.5">Manage your rewards securely</p>
       </div>
 
       {/* ── Balance Card (overlapping header) ── */}
@@ -389,7 +389,7 @@ export default function Balance() {
             {depositStep === 1 ? (
               <>
                 <h2 className="text-xl font-black text-gray-900 mb-2">
-                  Deposit Funds
+                  Deposit Amount
                 </h2>
 
                 <p className="text-sm font-medium text-gray-500 mb-6">
@@ -562,7 +562,7 @@ export default function Balance() {
             className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl relative overflow-y-auto"
             style={{ animation: 'modalSlideUp 0.3s ease-out', maxHeight: '90vh' }}
           >
-            <h2 className="text-xl font-black text-gray-900 mb-1">Withdraw Funds</h2>
+            <h2 className="text-xl font-black text-gray-900 mb-1">Withdraw Rewards</h2>
             <p className="text-sm font-medium text-gray-500 mb-4">
               Admin will process your request within 24 hours.
             </p>

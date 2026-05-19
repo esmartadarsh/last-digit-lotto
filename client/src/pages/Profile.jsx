@@ -39,7 +39,7 @@ const MENU_ITEMS = [
     iconBg: '#eff6ff',
     iconColor: '#0284c7',
     badge: null,
-    link: 'https://t.me/adijoshi13',
+    link: 'https://t.me/Lastdigitlotto09',
   },
 ];
 

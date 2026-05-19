@@ -413,7 +413,7 @@ export default function ManageWithdrawals() {
       <ConfirmModal
         isOpen={!!approveModal}
         title="Approve Withdrawal"
-        message={`Approve withdrawal of ₹${Math.abs(parseFloat(approveModal?.tx?.amount || 0)).toFixed(0)} for ${approveModal?.tx?.user?.name || 'user'}? Ensure you have sent the money before approving.`}
+        message={`Approve withdrawal of ₹${Math.abs(parseFloat(approveModal?.tx?.amount || 0)).toFixed(0)} for ${approveModal?.tx?.user?.name || 'user'}? Ensure you have sent the rewards before approving.`}
         onConfirm={handleApprove}
         onCancel={() => setApproveModal(null)}
         confirmLabel={actionLoading ? 'Approving...' : 'Mark as Processed'}

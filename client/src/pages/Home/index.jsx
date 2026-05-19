@@ -1,5 +1,5 @@
 import ProfileImg from "@/assets/imgs/default-profile-img.png"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import api from "../../config/api"
 import formatTime from "@/utils/formatTime"
@@ -40,6 +40,15 @@ export default function Home() {
     const [lotteryDraws, setLotteryDraws] = useState([]);
     const [abcDraws, setAbcDraws] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [showDisclaimer, setShowDisclaimer] = useState(false);
+
+    useEffect(() => {
+        // Show disclaimer only if user hasn't accepted it before
+        const accepted = localStorage.getItem('disclaimer_accepted');
+        if (!accepted) {
+            setShowDisclaimer(true);
+        }
+    }, []);
 
     useEffect(() => {
         const fetchActiveDraws = async () => {
@@ -89,6 +98,119 @@ export default function Home() {
 
     return (
         <div className="pb-4">
+
+            {/* ── Disclaimer Modal ── */}
+            {showDisclaimer && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        zIndex: 9999,
+                        backgroundColor: 'rgba(0,0,0,0.65)',
+                        backdropFilter: 'blur(4px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '20px',
+                        animation: 'fadeInOverlay 0.25s ease',
+                    }}
+                >
+                    <div
+                        style={{
+                            background: 'linear-gradient(145deg, #ffffff, #f8f9ff)',
+                            borderRadius: '20px',
+                            padding: '28px 24px 24px',
+                            maxWidth: '350px',
+                            width: '100%',
+                            boxShadow: '0 25px 60px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.6)',
+                            animation: 'slideUpModal 0.3s cubic-bezier(0.34,1.56,0.64,1)',
+                            position: 'relative',
+                        }}
+                    >
+                        {/* Icon */}
+                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+                            <div style={{
+                                width: '52px',
+                                height: '52px',
+                                borderRadius: '50%',
+                                background: 'linear-gradient(135deg, #f59e0b, #ef4444)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '24px',
+                                boxShadow: '0 4px 15px rgba(239,68,68,0.35)',
+                            }}>
+                                ⚠️
+                            </div>
+                        </div>
+
+                        {/* Title */}
+                        <h2 style={{
+                            textAlign: 'center',
+                            fontSize: '18px',
+                            fontWeight: '800',
+                            color: '#111827',
+                            marginBottom: '12px',
+                            letterSpacing: '-0.3px',
+                        }}>
+                            Disclaimer
+                        </h2>
+
+                        {/* Divider */}
+                        <div style={{ height: '1px', background: 'linear-gradient(90deg, transparent, #e5e7eb, transparent)', marginBottom: '14px' }} />
+
+                        {/* Body */}
+                        <p style={{
+                            fontSize: '13.5px',
+                            lineHeight: '1.65',
+                            color: '#4b5563',
+                            textAlign: 'center',
+                            marginBottom: '22px',
+                        }}>
+                            The developers and publishers of this app are not responsible for any personal, or other losses or damages incurred through the use of this app. All actions and decisions made based on the app's content are solely at the user's own risk. The app is provided <strong style={{ color: '#374151' }}>'as is,'</strong> without any warranties or guarantees. Users are advised to use the app responsibly.
+                        </p>
+
+                        {/* Close Button */}
+                        <button
+                            onClick={() => {
+                                localStorage.setItem('disclaimer_accepted', 'true');
+                                setShowDisclaimer(false);
+                            }}
+                            style={{
+                                display: 'block',
+                                width: '100%',
+                                padding: '13px',
+                                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '12px',
+                                fontSize: '15px',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                letterSpacing: '0.2px',
+                                boxShadow: '0 4px 14px rgba(99,102,241,0.4)',
+                                transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 18px rgba(99,102,241,0.5)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(99,102,241,0.4)'; }}
+                        >
+                            I Understand
+                        </button>
+                    </div>
+
+                    {/* Keyframe styles */}
+                    <style>{`
+                        @keyframes fadeInOverlay {
+                            from { opacity: 0; }
+                            to { opacity: 1; }
+                        }
+                        @keyframes slideUpModal {
+                            from { opacity: 0; transform: translateY(30px) scale(0.95); }
+                            to { opacity: 1; transform: translateY(0) scale(1); }
+                        }
+                    `}</style>
+                </div>
+            )}
 
             {/* ── Top Header Bar ── */}
             <Header user={{
