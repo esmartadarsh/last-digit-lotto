@@ -1,6 +1,8 @@
 import { create } from 'zustand';
-import { auth, googleProvider, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber } from '../config/firebase';
+import { auth, googleProvider, GoogleAuthProvider, signInWithCredential, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber } from '../config/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { Capacitor } from '@capacitor/core';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import api from '../config/api';
 import { setToken } from '../config/tokenStore';
 
@@ -109,7 +111,19 @@ const useAuthStore = create((set, get) => ({
   loginWithGoogle: async () => {
     try {
       set({ isLoading: true, error: null });
-      await signInWithPopup(auth, googleProvider);
+      if (Capacitor.isNativePlatform()) {
+        // Use legacy Google Sign-In (works on all Android devices)
+        await GoogleAuth.initialize({
+          clientId: '725722483221-0p8jjitg9htlh5mo2eus2nrse13nf856.apps.googleusercontent.com',
+          scopes: ['profile', 'email'],
+          grantOfflineAccess: true,
+        });
+        const googleUser = await GoogleAuth.signIn();
+        const credential = GoogleAuthProvider.credential(googleUser.authentication.idToken);
+        await signInWithCredential(auth, credential);
+      } else {
+        await signInWithPopup(auth, googleProvider);
+      }
       // The onAuthStateChanged listener will automatically pick up the new user
     } catch (err) {
       console.error("Google sign in error:", err);

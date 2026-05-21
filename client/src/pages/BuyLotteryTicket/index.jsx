@@ -20,7 +20,7 @@ import {
 
 
 /* ── Static Data ── */
-const JACKPOT_BALLS = ["8", "8", "C", "2", "0", "6", "6", "2"];
+const JACKPOT_EMPTY = ["-", "-", "-", "-", "-", "-", "-", "-"];
 
 export default function BuyLotteryTicket() {
   const navigate = useNavigate();
@@ -85,17 +85,15 @@ export default function BuyLotteryTicket() {
   }, [game, targetDrawId]);
 
   useEffect(() => {
-    if (activeTab === "history" && recentResults.length === 0) {
-      api
-        .get(`/results/lottery/recent?game=${game}`)
-        .then((res) => {
-          if (res.data.success) {
-            setRecentResults(res.data.results);
-          }
-        })
-        .catch((err) => console.error("Failed to fetch results", err));
-    }
-  }, [activeTab, game, recentResults.length]);
+    api
+      .get(`/results/lottery/recent?game=${game}`)
+      .then((res) => {
+        if (res.data.success) {
+          setRecentResults(res.data.results);
+        }
+      })
+      .catch((err) => console.error("Failed to fetch results", err));
+  }, [game]);
 
   /* ── Derived totals ── */
   const totalTickets = cartItems.reduce(
@@ -243,7 +241,7 @@ export default function BuyLotteryTicket() {
         bannerUrl={activeDraw?.banner_url}
       />
 
-      <JackpotNumbers balls={JACKPOT_BALLS} />
+      <JackpotNumbers balls={recentResults.length > 0 ? recentResults[0].winning_number.split("") : JACKPOT_EMPTY} />
 
       <Tabs activeTab={activeTab} onChange={setActiveTab} />
 

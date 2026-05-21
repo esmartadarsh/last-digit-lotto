@@ -1,5 +1,16 @@
 {
   "appId": "com.lastdigitlotto.app",
   "appName": "Last Digit Lotto",
-  "webDir": "dist"
+  "webDir": "dist",
+  "server": {
+    "hostname": "lastdigitlotto.in",
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "GoogleAuth": {
+      "scopes": ["profile", "email"],
+      "serverClientId": "725722483221-0p8jjitg9htlh5mo2eus2nrse13nf856.apps.googleusercontent.com",
+      "forceCodeForRefreshToken": true
+    }
+  }
 }

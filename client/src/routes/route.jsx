@@ -14,6 +14,7 @@ import Home from '@/pages/Home';
 import MyTickets from '@/pages/MyTickets';
 import Balance from '@/pages/Balance';
 import Profile from '@/pages/Profile';
+import AboutUs from '@/pages/AboutUs';
 import BuyLotteryTicket from '@/pages/BuyLotteryTicket';
 import BuyAbcTicket from '@/pages/BuyAbcTicket';
 
@@ -111,6 +112,7 @@ export default function AppRoutes() {
                         <Route path="profile" element={
                             <RequireAuth><Profile /></RequireAuth>
                         } />
+                        <Route path="about-us" element={<AboutUs />} />
                         {/* No auth required to browse — login is only enforced at purchase time */}
                         <Route path="abc-ticket/:game" element={<BuyAbcTicket />} />
                         <Route path="lottery-ticket/:game" element={<BuyLotteryTicket />} />

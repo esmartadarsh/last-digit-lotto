@@ -3,6 +3,7 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithCredential,
   RecaptchaVerifier,
   signInWithPhoneNumber,
 } from 'firebase/auth';
@@ -29,7 +30,9 @@ export {
   db,
   storage,
   googleProvider,
+  GoogleAuthProvider,
   signInWithPopup,
+  signInWithCredential,
   RecaptchaVerifier,
   signInWithPhoneNumber
 };
