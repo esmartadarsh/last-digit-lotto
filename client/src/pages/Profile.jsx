@@ -58,6 +58,15 @@ const MENU_ITEMS = [
     badge: null,
     route: "/about-us",
   },
+  {
+    icon: FiShield,
+    label: "Privacy Policy",
+    sub: "How we handle your data",
+    iconBg: "#f0fdf4",
+    iconColor: "#16a34a",
+    badge: null,
+    route: "/privacy-policy",
+  },
 ];
 
 const STATS = [
