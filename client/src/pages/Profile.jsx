@@ -48,7 +48,7 @@ const MENU_ITEMS = [
     iconBg: "#fdf4ff",
     iconColor: "#9333ea",
     badge: null,
-    link: "https://firebasestorage.googleapis.com/v0/b/last-digit-lotto.firebasestorage.app/o/application%2Fapp-debug.apk?alt=media&token=2eea6a31-e770-4d2e-b937-b0a5c715e484",
+    link: "https://firebasestorage.googleapis.com/v0/b/last-digit-lotto.firebasestorage.app/o/application%2FLastDigitLotto.apk?alt=media&token=ba59b439-f249-4092-9dd7-b1552e1d4383",
   },
   {
     icon: FiHelpCircle,
