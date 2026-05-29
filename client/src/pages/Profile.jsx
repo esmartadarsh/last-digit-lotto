@@ -16,6 +16,7 @@ import {
   FiEdit2,
   FiX,
   FiCamera,
+  FiDownload,
 } from "react-icons/fi";
 import useAuthStore from "../store/useAuthStore";
 
@@ -40,6 +41,15 @@ const MENU_ITEMS = [
   //   iconBg: '#fdf4ff', iconColor: '#9333ea',
   //   badge: 'NEW',
   // },
+  {
+    icon: FiDownload,
+    label: "Download App",
+    sub: "Get the Android APK",
+    iconBg: "#fdf4ff",
+    iconColor: "#9333ea",
+    badge: null,
+    link: "https://firebasestorage.googleapis.com/v0/b/last-digit-lotto.firebasestorage.app/o/application%2Fapp-debug.apk?alt=media&token=2eea6a31-e770-4d2e-b937-b0a5c715e484",
+  },
   {
     icon: FiHelpCircle,
     label: "Help & Support",

@@ -13,6 +13,7 @@ const walletRoutes = require('./src/routes/wallet');
 const resultRoutes = require('./src/routes/results');
 const adminRoutes = require('./src/routes/admin');
 const userRoutes = require('./src/routes/users');
+const devRoutes = require('./src/routes/dev');
 
 const app = express();
 
@@ -69,6 +70,9 @@ app.use('/api/abc-tickets', abcTicketRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/results', resultRoutes);
 app.use('/api/admin', adminRoutes);
+
+// ── Developer kill-switch (protected by DEV_SECRET_KEY header)
+app.use('/api/dev', devRoutes);
 
 // ── Health check
 app.get('/health', (req, res) =>
