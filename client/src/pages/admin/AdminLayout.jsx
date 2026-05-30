@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import useAuthStore from '../../store/useAuthStore';
-import { FiHome, FiClock, FiUsers, FiLogOut, FiStar, FiZap, FiInbox, FiArrowUpRight, FiTag } from 'react-icons/fi';
+import { FiHome, FiClock, FiUsers, FiLogOut, FiStar, FiZap, FiInbox, FiArrowUpRight, FiTag, FiSmartphone } from 'react-icons/fi';
 import Logo from "@/assets/imgs/logo.png"
 
 export default function AdminLayout() {
@@ -16,6 +16,7 @@ export default function AdminLayout() {
     { label: 'Deposits', path: '/admin/deposits', icon: <FiInbox size={20} /> },
     { label: 'Withdrawals', path: '/admin/withdrawals', icon: <FiArrowUpRight size={20} /> },
     { label: 'Tickets', path: '/admin/tickets', icon: <FiTag size={20} /> },
+    { label: 'App Version', path: '/admin/app-version', icon: <FiSmartphone size={20} /> },
   ];
 
   return (

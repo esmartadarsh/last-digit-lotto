@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "../config/firebase";
+import { db } from "../config/firebase";
+import { doc, getDoc } from "firebase/firestore";
 import api from "../config/api";
 import {
   FiInfo,
@@ -48,7 +50,7 @@ const MENU_ITEMS = [
     iconBg: "#fdf4ff",
     iconColor: "#9333ea",
     badge: null,
-    link: "https://firebasestorage.googleapis.com/v0/b/last-digit-lotto.firebasestorage.app/o/application%2FLastDigitLotto.apk?alt=media&token=ba59b439-f249-4092-9dd7-b1552e1d4383",
+    link: null, // loaded dynamically from Firestore
   },
   {
     icon: FiHelpCircle,
@@ -94,6 +96,21 @@ export default function Profile() {
   const [editAvatar, setEditAvatar] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [apkUrl, setApkUrl] = useState("");
+
+  // Load live APK URL from Firestore (set by admin in App Version Manager)
+  useEffect(() => {
+    (async () => {
+      try {
+        const snap = await getDoc(doc(db, 'config', 'app_version'));
+        if (snap.exists() && snap.data().apk_url) {
+          setApkUrl(snap.data().apk_url);
+        }
+      } catch {
+        // silently fail — download button stays hidden
+      }
+    })();
+  }, []);
 
   const openEditModal = () => {
     setEditName(user?.name || "");
@@ -283,6 +300,9 @@ export default function Profile() {
                 onClick={() => {
                   if (item.route) {
                     navigate(item.route);
+                  } else if (item.label === 'Download App') {
+                    if (apkUrl) window.open(apkUrl, '_blank');
+                    else toast.error('Download link not available yet.');
                   } else if (item.link) {
                     window.open(item.link, "_blank");
                   }

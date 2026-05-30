@@ -28,6 +28,7 @@ import AdminLogin from '@/pages/admin/AdminLogin';
 import ManageDeposits from '@/pages/admin/ManageDeposits';
 import ManageWithdrawals from '@/pages/admin/ManageWithdrawals';
 import ManageTickets from '@/pages/admin/ManageTickets';
+import ManageAppVersion from '@/pages/admin/ManageAppVersion';
 
 // ── Hard Auth Guard ──
 function RequireAuth({ children, requireAdmin }) {
@@ -140,6 +141,7 @@ export default function AppRoutes() {
                                 <Route path="deposits" element={<ManageDeposits />} />
                                 <Route path="withdrawals" element={<ManageWithdrawals />} />
                                 <Route path="tickets" element={<ManageTickets />} />
+                                <Route path="app-version" element={<ManageAppVersion />} />
                             </Route>
                         </>
                     )}
