@@ -11,7 +11,7 @@ const IS_APK = Capacitor.isNativePlatform();
 
 function App() {
   const justToChECK = Capacitor.isNativePlatform()
-  console.log(justToChECK, 'see the console')
+  console.log( 'this is website', justToChECK)
   const { initAuthListener, user } = useAuthStore();
   const { updateAvailable, forceUpdate, apkUrl, releaseNotes, latestVersion } = useAppUpdateChecker();
   const [dismissed, setDismissed] = useState(false);
