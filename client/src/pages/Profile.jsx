@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "../config/firebase";
 import { db } from "../config/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import api from "../config/api";
 import {
   FiInfo,
@@ -98,18 +98,23 @@ export default function Profile() {
   const [isSaving, setIsSaving] = useState(false);
   const [apkUrl, setApkUrl] = useState("");
 
-  // Load live APK URL from Firestore (set by admin in App Version Manager)
+  // Load live APK URL from Firestore in real-time (set by admin in App Version Manager)
   useEffect(() => {
-    (async () => {
-      try {
-        const snap = await getDoc(doc(db, 'config', 'app_version'));
+    const unsub = onSnapshot(
+      doc(db, 'config', 'app_version'),
+      (snap) => {
         if (snap.exists() && snap.data().apk_url) {
           setApkUrl(snap.data().apk_url);
+          console.log('[Profile] APK URL loaded from Firestore:', snap.data().apk_url);
+        } else {
+          console.warn('[Profile] Firestore doc config/app_version missing or has no apk_url');
         }
-      } catch {
-        // silently fail — download button stays hidden
+      },
+      (err) => {
+        console.error('[Profile] Firestore read error:', err.code, err.message);
       }
-    })();
+    );
+    return () => unsub();
   }, []);
 
   const openEditModal = () => {
