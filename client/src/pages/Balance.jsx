@@ -326,7 +326,7 @@ export default function Balance() {
               const showStatusBadge = tx.type === 'deposit' || tx.type === 'withdrawal';
               const statusBadge = {
                 pending: { label: 'Pending', bg: '#fef9c3', color: '#92400e', border: '#fde68a' },
-                completed: { label: tx.type === 'deposit' ? 'Approved' : 'Successful', bg: '#dcfce7', color: '#166534', border: '#bbf7d0' },
+                completed: { label: tx.type === 'deposit' ? 'Approved' : 'Processed', bg: '#dcfce7', color: '#166534', border: '#bbf7d0' },
                 failed: { label: 'Rejected', bg: '#fee2e2', color: '#991b1b', border: '#fecaca' },
                 reversed: { label: 'Expired', bg: '#f3f4f6', color: '#6b7280', border: '#e5e7eb' },
               }[tx.status] || { label: tx.status, bg: '#f3f4f6', color: '#6b7280', border: '#e5e7eb' };
