@@ -3,15 +3,20 @@ import useAuthStore from './store/useAuthStore';
 import AppRoutes from './routes/route';
 import { useAppUpdateChecker } from './hooks/useAppUpdateChecker';
 import UpdateBanner from './components/UpdateBanner';
+import { Capacitor } from '@capacitor/core';
 
-// Update banner is only relevant on the APK build.
-// Web users always get the latest version automatically on page load.
-const IS_APK = import.meta.env.VITE_PLATFORM !== 'web';
+// Capacitor.isNativePlatform() returns true ONLY when running as a real
+// Android/iOS APK — always false in a web browser, regardless of build config.
+const IS_APK = Capacitor.isNativePlatform();
 
 function App() {
-  const { initAuthListener } = useAuthStore();
+  const justToChECK = Capacitor.isNativePlatform()
+  console.log(justToChECK, 'see the console')
+  const { initAuthListener, user } = useAuthStore();
   const { updateAvailable, forceUpdate, apkUrl, releaseNotes, latestVersion } = useAppUpdateChecker();
   const [dismissed, setDismissed] = useState(false);
+
+  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
 
   useEffect(() => {
     initAuthListener();
@@ -22,8 +27,8 @@ function App() {
     if (updateAvailable) setDismissed(false);
   }, [latestVersion, updateAvailable]);
 
-  // Only show on APK — never on the website
-  const showBanner = IS_APK && updateAvailable && !dismissed;
+  // Only show on APK — never on the website — and never to admins
+  const showBanner = IS_APK && updateAvailable && !dismissed && !isAdmin;
 
   return (
     <>

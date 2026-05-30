@@ -7,6 +7,8 @@ export default function AdminLayout() {
   const { user, logout } = useAuthStore();
   const location = useLocation();
 
+  const isSuperAdmin = user?.role === 'superadmin';
+
   const NAV_ITEMS = [
     { label: 'Dashboard', path: '/admin', icon: <FiHome size={20} /> },
     { label: 'Draws & Results', path: '/admin/draws', icon: <FiClock size={20} /> },
@@ -16,7 +18,8 @@ export default function AdminLayout() {
     { label: 'Deposits', path: '/admin/deposits', icon: <FiInbox size={20} /> },
     { label: 'Withdrawals', path: '/admin/withdrawals', icon: <FiArrowUpRight size={20} /> },
     { label: 'Tickets', path: '/admin/tickets', icon: <FiTag size={20} /> },
-    { label: 'App Version', path: '/admin/app-version', icon: <FiSmartphone size={20} /> },
+    // Only superadmins can manage app version
+    ...(isSuperAdmin ? [{ label: 'App Version', path: '/admin/app-version', icon: <FiSmartphone size={20} /> }] : []),
   ];
 
   return (
