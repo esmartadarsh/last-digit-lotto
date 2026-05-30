@@ -54,7 +54,7 @@ const MENU_ITEMS = [
   },
   {
     icon: FiHelpCircle,
-    label: "Help & Support",
+    label: "Help & Supports",
     sub: "24/7 live chat",
     iconBg: "#eff6ff",
     iconColor: "#0284c7",
