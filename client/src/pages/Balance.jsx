@@ -57,7 +57,6 @@ export default function Balance() {
   }, []);
 
   const handleDeposit = (amountToDeposit) => {
-    console.log('reaching 1')
     if (!amountToDeposit) {
       setDepositAmount('100');
       setDepositStep(1);
@@ -65,13 +64,11 @@ export default function Balance() {
       setIsDepositModalOpen(true);
       return;
     }
-    console.log('reaching 2')
 
     processDeposit(amountToDeposit);
   };
 
   const processDeposit = async (amountToDeposit) => {
-    console.log('reaching 3')
 
     const amount = Number(amountToDeposit);
     if (isNaN(amount) || amount < 100) {
@@ -87,7 +84,6 @@ export default function Balance() {
       // Phase 2: UPI Manual Flow
       const { data } = await api.post('/wallet/deposit', { amount: Number(amount) });
       if (!data.success) throw new Error(data.message);
-      console.log('reaching 4')
 
       setOrderData({ orderId: data.orderId, amount: data.amount });
       setDepositStep(2);
@@ -331,15 +327,21 @@ export default function Balance() {
                 reversed: { label: 'Expired', bg: '#f3f4f6', color: '#6b7280', border: '#e5e7eb' },
               }[tx.status] || { label: tx.status, bg: '#f3f4f6', color: '#6b7280', border: '#e5e7eb' };
 
+              // Extract rejection reason from description (e.g. "... | Rejected by admin: UTR mismatch")
+              const rejectionReasonMatch = tx.status === 'failed' && tx.description
+                ? tx.description.match(/\|\s*Rejected by admin:\s*(.+)$/i)
+                : null;
+              const rejectionReason = rejectionReasonMatch ? rejectionReasonMatch[1].trim() : null;
+
               return (
                 <div
                   key={tx.id}
-                  className="flex items-center justify-between p-4 rounded-2xl bg-white"
-                  style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid #f3f4f6' }}
+                  className="flex items-start justify-between p-4 rounded-2xl bg-white"
+                  style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: tx.status === 'failed' && showStatusBadge ? '1px solid #fecaca' : '1px solid #f3f4f6' }}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-start gap-3">
                     <div
-                      className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                      className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
                       style={{ background: d.bg }}
                     >
                       <Icon style={{ width: 18, height: 18, color: d.color }} />
@@ -356,6 +358,11 @@ export default function Balance() {
                         >
                           {statusBadge.label}
                         </span>
+                      )}
+                      {rejectionReason && (
+                        <p className="mt-1.5 text-[11px] font-semibold leading-snug max-w-[180px]" style={{ color: '#b91c1c' }}>
+                          ❌ {rejectionReason}
+                        </p>
                       )}
                     </div>
                   </div>

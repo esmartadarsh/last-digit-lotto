@@ -11,4 +11,4 @@
  *   4. Go to Admin Panel → App Version → set the new version + URL → Save
  *   5. All users instantly see the update prompt ✅
  */
-export const APP_VERSION = "1.0.2";
+export const APP_VERSION = "1.0.1";
