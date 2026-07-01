@@ -56,7 +56,7 @@ export function useAppUpdateChecker() {
 
         const data = snapshot.data();
         const remoteVersion = data.version ?? '';
-        console.log('neccesery',remoteVersion, APP_VERSION)
+        console.log('maybe this is app version', remoteVersion)
         const updateAvailable = isNewerVersion(remoteVersion, APP_VERSION);
 
         setState({

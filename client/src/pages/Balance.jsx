@@ -292,9 +292,9 @@ export default function Balance() {
 
       {/* ── Transactions ── */}
       <div className="px-4 mt-6">
-        <div className="flex justify-between items-center mb-3">
+        <div className="flex justify-start items-center mb-3">
           <h3 className="text-[17px] font-black text-gray-900">Recent Transactions</h3>
-          <button className="text-xs font-bold text-red-600 active:opacity-70 cursor-pointer">View All →</button>
+          {/* <button className="text-xs font-bold text-red-600 active:opacity-70 cursor-pointer">View All →</button> */}
         </div>
 
         <div className="space-y-2.5">
@@ -456,7 +456,7 @@ export default function Balance() {
                   >
                     <QRCodeCanvas
                       id="qr-canvas"
-                      value={`upi://pay?pa=gpay-12201053181@0kbizaxis&pn=LotteryApp&am=${orderData?.amount}&cu=INR&tn=${orderData?.orderId}`}
+                      value={`upi://pay?pa=toufk555@slc&pn=LotteryApp&am=${orderData?.amount}&cu=INR&tn=${orderData?.orderId}`}
                       size={160}
                       width={160}
                       height={160}
@@ -490,7 +490,7 @@ export default function Balance() {
                     {/* Click to Pay — mobile only */}
                     {isMobile && (
                       <a
-                        href={`upi://pay?pa=gpay-12201053181@0kbizaxis&pn=LotteryApp&am=${orderData?.amount}&cu=INR&tn=${orderData?.orderId}`}
+                        href={`upi://pay?pa=toufk555@slc&pn=LotteryApp&am=${orderData?.amount}&cu=INR&tn=${orderData?.orderId}`}
                         className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] bg-blue-600 active:bg-blue-700 font-black active:scale-95 transition-all"
                         style={{
                           color: '#fff',

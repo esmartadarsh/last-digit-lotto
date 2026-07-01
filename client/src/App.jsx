@@ -11,9 +11,11 @@ const IS_APK = Capacitor.isNativePlatform();
 
 function App() {
   const justToChECK = Capacitor.isNativePlatform()
-  console.log( 'this is website', justToChECK)
+  console.log('this is website', justToChECK)
   const { initAuthListener, user } = useAuthStore();
   const { updateAvailable, forceUpdate, apkUrl, releaseNotes, latestVersion } = useAppUpdateChecker();
+  console.log(latestVersion, 'live version')
+  console.log(releaseNotes, 'app version')
   const [dismissed, setDismissed] = useState(false);
 
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
